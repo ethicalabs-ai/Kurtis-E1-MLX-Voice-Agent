@@ -1,2 +1,2 @@
-# Kurtis-R1
-Kurtis-R1, the empathetic assistant.
+# Kurtis-E1
+Kurtis-E1, the empathetic assistant.
