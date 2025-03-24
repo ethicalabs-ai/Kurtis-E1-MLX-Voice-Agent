@@ -1,0 +1,21 @@
+[project]
+name = "kurtis_mlx"
+version = "0.1.0"
+description = "Kurtis E1 MLX - Voice Assistant"
+readme = "README.md"
+requires-python = ">=3.11.11"
+dependencies = [
+    "click>=8.1.8",
+    "coqui-tts>=0.24.3",
+    "mlx-whisper>=0.4.2",
+    "nltk>=3.9.1",
+    "openai>=1.68.2",
+    "sounddevice>=0.5.1",
+]
+
+[dependency-groups]
+dev = [
+    "black>=24.10.0",
+    "pre-commit>=4.0.1",
+    "ruff>=0.7.3",
+]
