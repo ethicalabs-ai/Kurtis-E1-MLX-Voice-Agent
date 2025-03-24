@@ -50,9 +50,9 @@ def handle_interaction(
     language,
     translation_model,
 ):
-    TARGET_LANGUAGES = (
-        [config.SUPPORTED_LANGUAGES[language]["name"]] if language != "english" else []
-    )
+    TARGET_LANGUAGES = [
+        lang for lang in config.SUPPORTED_LANGUAGES if lang != "english"
+    ]
     audio_np = record_until_enter(samplerate)
     if audio_np.size == 0:
         console.print(
@@ -67,8 +67,8 @@ def handle_interaction(
         text = translate_text(
             text,
             client,
-            "english",  # LLM Language
             language,
+            "english",  # LLM Language
             config,
             translation_model=translation_model,
             max_tokens=max_tokens,
