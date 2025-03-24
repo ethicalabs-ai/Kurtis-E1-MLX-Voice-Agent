@@ -29,7 +29,7 @@ console = Console()
     default="multilingual/multi-dataset/xtts_v2",
     help="TTS model subpath",
 )
-@click.option("--max-tokens", default=213, help="Maximum tokens in LLM response.")
+@click.option("--max-tokens", default=200, help="Maximum tokens in LLM response.")
 @click.option(
     "--samplerate", default=22050, help="Audio recording and playback sample rate."
 )
