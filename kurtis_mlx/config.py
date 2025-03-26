@@ -1,6 +1,8 @@
-# OpenAI-compatible endpoint (Ollama)
-OPENAI_API_URL = "http://localhost:11434/v1"
-OPENAI_API_KEY = "ollama"
+import os
+
+# OpenAI-compatible endpoint (Ollama, LM Studio, vLLM, etc.)
+OPENAI_API_URL = os.environ.get("OPENAI_API_URL", "http://localhost:11434/v1")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "ollama")
 
 # Kurtis E1 system prompt.
 SYSTEM_PROMPT = "You are Kurtis, an empathetic mental health assistant. Keep responses short and conversational, as if you're on a calm phone call. Don't use glyphs or emoticons."
@@ -12,12 +14,53 @@ SUPPORTED_LANGUAGES = {
         "name": "English",
         "default_speaker": "Daisy Studious",
     },
+    "portuguese": {
+        "code": "pt",
+        "name": "Portuguese",
+        "default_speaker": "Gilberto Mathias",
+    },
+    "spanish": {
+        "code": "es",
+        "name": "Spanish",
+        "default_speaker": "Alma María",
+    },
+    "french": {
+        "code": "fr",
+        "name": "French",
+        "default_speaker": "Zacharie Aimilios",
+    },
+    "german": {
+        "code": "de",
+        "name": "German",
+        "default_speaker": "Brenda Stern",
+    },
+    "dutch": {
+        "code": "nl",
+        "name": "Dutch",
+        "default_speaker": "Annmarie Nele",
+    },
     "italian": {
         "code": "it",
         "name": "Italian",
         "default_speaker": "Eugenio Mataracı",
     },
+    "korean": {
+        "code": "ko",
+        "name": "Korean",
+        "default_speaker": "Asya Anara",
+    },
+    "chinese": {
+        "code": "zh",
+        "name": "Chinese",
+        "default_speaker": "Xavier Hayasaka",
+    },
+    "russian": {
+        "code": "ru",
+        "name": "Russian",
+        "default_speaker": "Lidiya Szekeres",
+    },
 }
+
 
 # Available Speakers
 SPEAKERS = [

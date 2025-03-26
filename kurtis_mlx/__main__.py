@@ -20,6 +20,11 @@ console = Console()
     help="Language for transcription and TTS.",
 )
 @click.option(
+    "--speaker",
+    type=click.Choice(config.SPEAKERS),
+    help="Override default language speaker.",
+)
+@click.option(
     "--whisper-model",
     default="mlx-community/whisper-medium",
     help="Base Whisper model (combined with language code).",
@@ -43,11 +48,12 @@ console = Console()
 )
 @click.option(
     "--translation-model",
-    default="hf.co/mradermacher/TowerInstruct-13B-v0.1-GGUF:IQ4_XS",
+    default="hf.co/mradermacher/TowerInstruct-7B-v0.2-GGUF:Q4_K_S",
     help="Model to use for translation.",
 )
 def main(
     language,
+    speaker,
     whisper_model,
     tts_model,
     max_tokens,
@@ -64,7 +70,9 @@ def main(
     ]
 
     lang_code = config.SUPPORTED_LANGUAGES[language]["code"]
-    speaker = config.SUPPORTED_LANGUAGES[language]["default_speaker"]
+    selected_speaker = (
+        speaker or config.SUPPORTED_LANGUAGES[language]["default_speaker"]
+    )
     full_whisper_model = whisper_model
 
     full_tts_model = tts_model
@@ -76,7 +84,14 @@ def main(
 
     tts_process = Process(
         target=tts_worker,
-        args=(text_queue, sound_queue, full_tts_model, samplerate, lang_code, speaker),
+        args=(
+            text_queue,
+            sound_queue,
+            full_tts_model,
+            samplerate,
+            lang_code,
+            selected_speaker,
+        ),
         daemon=True,
     )
     tts_process.start()
