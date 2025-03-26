@@ -4,7 +4,7 @@ A privacy-focused, **offline voice assistant for macOS**, powered by:
 
 - 🧠 Local LLM inference via [Ollama](https://ollama.com/) (replaceable with [LM Studio](https://lmstudio.ai) or any OpenAI-compatible API endpoint)
 - 🎤 Speech-to-text via [MLX Whisper](https://github.com/ml-explore/mlx-examples/tree/main/whisper)
-- 🌍 Offline translations via [Unbabel/TowerInstruct-13B-v0.1](https://huggingface.co/Unbabel/TowerInstruct-13B-v0.1)
+- 🌍 Offline translations via [Unbabel/TowerInstruct-7B-v0.2](https://huggingface.co/Unbabel/TowerInstruct-7B-v0.2)
 - 🗣️ High-quality multilingual TTS (currently using XTTS v2)
 
 This project is designed **specifically for Apple Silicon Macs**.
