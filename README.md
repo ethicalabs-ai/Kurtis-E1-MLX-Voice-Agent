@@ -23,7 +23,8 @@ To run this project, you'll need:
 Default Open-AI API endpoint (Ollama) is set as default. For LM Studio you can set the following environment variables:
 
 ```
-export OPENAI_API_URL=http://localhost:1234/api/v1
+# Remember to start LM Studio server.
+export OPENAI_API_URL=http://localhost:1234/v1
 export OPENAI_API_KEY=lmstudio
 ```
 
