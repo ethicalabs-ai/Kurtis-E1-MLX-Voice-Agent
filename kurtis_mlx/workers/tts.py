@@ -12,7 +12,13 @@ def clean_text(text):
 
 
 def tts_worker(text_queue, sound_queue, tts_model, samplerate, lang_code, speaker):
-    nltk.download("punkt_tab")
+    try:
+        nltk.data.find("tokenizers/punkt")
+        console.print("Punkt tokenizer is already downloaded.")
+    except LookupError:
+        console.print("Downloading punkt tokenizer...")
+        nltk.download("punkt_tab")
+
     tts = TTS(model_name=tts_model, progress_bar=False, gpu=False)
 
     while True:
