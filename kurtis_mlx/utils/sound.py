@@ -34,4 +34,4 @@ def record_until_enter(samplerate):
     if audio_chunks:
         return np.concatenate(audio_chunks).astype(np.int16)
     else:
-        return None
+        return np.array(audio_chunks)

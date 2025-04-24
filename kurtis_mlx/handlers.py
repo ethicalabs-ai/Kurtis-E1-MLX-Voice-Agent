@@ -54,7 +54,7 @@ def handle_interaction(
         lang for lang in config.SUPPORTED_LANGUAGES if lang != "english"
     ]
     audio_np = record_until_enter(samplerate)
-    if not audio_np or audio_np.size == 0:
+    if audio_np.size == 0:
         console.print(
             "[red]No audio recorded. Please ensure your microphone is working."
         )
@@ -62,6 +62,11 @@ def handle_interaction(
 
     console.print("[green]Transcribing...")
     text = transcribe(audio_np, stt_model_name)
+    if not text.strip():
+        console.print(
+            "[red]No text transcribed. Please ensure your microphone is working."
+        )
+        return
     console.print(f"[red]Text: {text}")
     if translate and language in TARGET_LANGUAGES:
         text = translate_text(
