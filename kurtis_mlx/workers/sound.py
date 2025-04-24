@@ -7,9 +7,13 @@ console = Console()
 
 def sd_worker(sound_queue, samplerate):
     while True:
-        au = sound_queue.get()
-        if au is None:
+        try:
+            au = sound_queue.get()
+        except KeyboardInterrupt:
             break
+        else:
+            if au is None:
+                break
         try:
             console.print("[purple]Playing Audio: ...")
             au_np = np.asarray(au, dtype=np.float32)

@@ -22,9 +22,13 @@ def tts_worker(text_queue, sound_queue, tts_model, samplerate, lang_code, speake
     tts = TTS(model_name=tts_model, progress_bar=False, gpu=False)
 
     while True:
-        text = text_queue.get()
-        if text is None:
+        try:
+            text = text_queue.get()
+        except KeyboardInterrupt:
             break
+        else:
+            if text is None:
+                break
         try:
             console.print("[blue]Speaking: ...")
             text = clean_text(text)

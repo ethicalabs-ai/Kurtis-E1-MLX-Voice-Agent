@@ -54,7 +54,7 @@ def handle_interaction(
         lang for lang in config.SUPPORTED_LANGUAGES if lang != "english"
     ]
     audio_np = record_until_enter(samplerate)
-    if audio_np.size == 0:
+    if not audio_np or audio_np.size == 0:
         console.print(
             "[red]No audio recorded. Please ensure your microphone is working."
         )
