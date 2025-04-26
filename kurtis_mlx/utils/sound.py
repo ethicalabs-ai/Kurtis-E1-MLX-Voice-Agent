@@ -31,5 +31,7 @@ def record_until_enter(samplerate):
             block, _ = stream.read(blocksize)
             chunk = block[:, 0]
             audio_chunks.append(chunk)
-
-    return np.concatenate(audio_chunks).astype(np.int16)
+    if audio_chunks:
+        return np.concatenate(audio_chunks).astype(np.int16)
+    else:
+        return np.array(audio_chunks)

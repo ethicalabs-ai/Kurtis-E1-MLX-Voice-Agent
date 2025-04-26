@@ -40,7 +40,7 @@ console = Console()
 )
 @click.option(
     "--llm-model",
-    default="hf.co/ethicalabs/Kurtis-E1-SmolLM2-1.7B-Instruct-Q4_K_M-GGUF",
+    default="hf.co/ethicalabs/Kurtis-E1.1-Qwen2.5-3B-Instruct-IQ4_XS-GGUF",
     help="LLM model identifier.",
 )
 @click.option(
@@ -119,10 +119,18 @@ def main(
             )
 
     except KeyboardInterrupt:
-        console.print("\n[red]Exiting...")
+        console.print("\n[red]KeyboardInterrupt. Exiting...")
         text_queue.put(None)
         sound_queue.put(None)
+        tts_process.terminate()
         tts_process.join()
+        sound_process.terminate()
+        sound_process.join()
+    else:
+        console.print("\n[red]Exiting...")
+        tts_process.close()
+        tts_process.join()
+        sound_process.close()
         sound_process.join()
 
     console.print("[blue]Session ended.")

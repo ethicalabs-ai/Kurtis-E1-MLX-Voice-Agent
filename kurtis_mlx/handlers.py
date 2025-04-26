@@ -62,6 +62,11 @@ def handle_interaction(
 
     console.print("[green]Transcribing...")
     text = transcribe(audio_np, stt_model_name)
+    if not text.strip():
+        console.print(
+            "[red]No text transcribed. Please ensure your microphone is working."
+        )
+        return
     console.print(f"[red]Text: {text}")
     if translate and language in TARGET_LANGUAGES:
         text = translate_text(
