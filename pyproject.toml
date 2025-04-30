@@ -9,8 +9,12 @@ dependencies = [
     "coqui-tts>=0.24.3",
     "mlx-whisper>=0.4.2",
     "nltk>=3.9.1",
+    "numpy>=1.26.4",
     "openai>=1.68.2",
+    "pillow>=11.1.0",
+    "pystray>=0.19.5",
     "sounddevice>=0.5.1",
+    "wxpython>=4.2.3",
 ]
 
 [dependency-groups]
