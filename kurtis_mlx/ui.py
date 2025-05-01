@@ -11,6 +11,11 @@ matplotlib.use("WXAgg")  # Use the WXAgg backend for wxPython integration
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 
+# from kurtis_mlx import config
+# from kurtis_mlx.workers.tts import tts_worker
+# from kurtis_mlx.workers.sound import sd_worker
+
+
 SAMPLE_RATE = 44100
 RECORD_DURATION = 5  # seconds
 AUDIO_FILE = "recorded_audio.wav"
@@ -20,9 +25,12 @@ recorded_data = None
 main_frame = None
 app = None  # Global wx.App instance
 tray_icon = None
+show_ui = True  # Global variable to track ui state
 show_developer_mode = False  # Global variable to track developer mode state
-developer_mode_menu_item = None  # Global variable for the menu item
+developer_mode_menu_item = None  # Global variable for the developer mode menu item
+show_ui_menu_item = None  # Global variable for the show ui menu item
 developer_mode_text = "Show Developer Mode"
+show_ui_text = "Hide UI"
 
 
 def record_audio():
@@ -70,23 +78,17 @@ def play_audio():
             wx.CallAfter(main_frame.update_playback_status, "No audio to play")
 
 
-def on_show_ui(icon=None, item=None):
-    global main_frame
+def on_show_ui_toggle(icon=None, item=None):
+    global show_ui, main_frame, show_ui_menu_item, show_ui_text  # noqa
+    show_ui = not show_ui
     if main_frame:
-
-        def show_actions():
-            if not main_frame.IsShown():
-                main_frame.Show()
-            main_frame.MakeAlwaysOnTop(True)
-            main_frame.Raise()
-
-        wx.CallAfter(show_actions)
-
-
-def on_hide_ui(icon=None, item=None):
-    global main_frame
-    if main_frame:
-        wx.CallAfter(main_frame.Hide)
+        wx.CallAfter(main_frame.toggle_ui_visibility, show_ui)
+    if show_ui:
+        show_ui_text = "Hide UI"  # Change menu item text
+    else:
+        show_ui_text = "Show UI"
+    # Update the menu item in the tray
+    tray_icon.update_menu()
 
 
 def on_quit_tray(icon=None, item=None):
@@ -129,11 +131,11 @@ else:
 developer_mode_menu_item = pystray.MenuItem(
     lambda text: developer_mode_text, on_developer_mode_toggle
 )
+show_ui_menu_item = pystray.MenuItem(lambda text: show_ui_text, on_show_ui_toggle)
 menu = pystray.Menu(
-    pystray.MenuItem("Show UI", on_show_ui),
-    pystray.MenuItem("Hide UI", on_hide_ui),
+    show_ui_menu_item,
     pystray.MenuItem("Ask Kurtis", on_record_tray),
-    developer_mode_menu_item,  # Added dev mode toggle
+    developer_mode_menu_item,
     pystray.MenuItem("Quit", on_quit_tray),
 )
 
@@ -153,7 +155,6 @@ class MainFrame(wx.Frame):
         self.sizer = wx.BoxSizer(wx.VERTICAL)
 
         self.record_button = wx.Button(self, label="Ask Kurtis")  # Parent is now self
-        self.hide_button = wx.Button(self, label="Hide UI")  # Parent is now self
 
         self.recording_status_label = wx.StaticText(
             self,
@@ -203,7 +204,6 @@ class MainFrame(wx.Frame):
         )  # Add the canvas to thesizer
 
         self.sizer.Add(self.record_button, 0, wx.ALL | wx.EXPAND, 5)
-        self.sizer.Add(self.hide_button, 0, wx.ALL | wx.EXPAND, 5)
         self.sizer.Add(self.recording_status_label, 0, wx.ALL, 5)
         self.sizer.Add(self.playback_status_label, 0, wx.ALL, 5)
         self.sizer.Add(
@@ -217,7 +217,6 @@ class MainFrame(wx.Frame):
         self.Layout()  # Add this line
 
         self.record_button.Bind(wx.EVT_BUTTON, self.on_record_button)
-        self.hide_button.Bind(wx.EVT_BUTTON, self.on_hide_button)
         self.Bind(wx.EVT_CLOSE, self.on_close)
         self.is_always_on_top = False
 
@@ -228,9 +227,6 @@ class MainFrame(wx.Frame):
             wx.MessageBox(
                 "Already recording.", "Warning", wx.OK | wx.ICON_WARNING, self
             )
-
-    def on_hide_button(self, event):
-        self.Hide()
 
     def on_close(self, event):
         # Override the close event.
@@ -285,6 +281,18 @@ class MainFrame(wx.Frame):
             self.ax_waveform.set_xlabel("Time (s)")
             self.ax_waveform.set_ylabel("Amplitude")
             self.canvas.draw()
+
+    def toggle_ui_visibility(self, show):
+        def show_actions():
+            if not main_frame.IsShown():
+                main_frame.Show()
+            main_frame.MakeAlwaysOnTop(True)
+            main_frame.Raise()
+
+        if show:
+            wx.CallAfter(show_actions)
+        else:
+            wx.CallAfter(main_frame.Hide)
 
     def toggle_developer_mode_visibility(self, show):
         self.developer_mode_section.Show(show)
