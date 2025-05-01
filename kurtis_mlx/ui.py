@@ -20,6 +20,9 @@ recorded_data = None
 main_frame = None
 app = None  # Global wx.App instance
 tray_icon = None
+show_developer_mode = False  # Global variable to track developer mode state
+developer_mode_menu_item = None  # Global variable for the menu item
+developer_mode_text = "Show Developer Mode"
 
 
 def record_audio():
@@ -39,6 +42,7 @@ def record_audio():
             wx.CallAfter(main_frame.update_recording_status, "Idle")
             wx.CallAfter(main_frame.update_spectrogram, recorded_data)  # update
             wx.CallAfter(main_frame.update_waveform, recorded_data)
+            wx.CallAfter(play_audio)  # Auto play after recording
     except sd.PortAudioError as e:
         print(f"Error during recording: {e}")
         if main_frame:
@@ -57,8 +61,6 @@ def play_audio():
             print("Playback finished.")
             if main_frame:
                 wx.CallAfter(main_frame.update_playback_status, "Idle")
-                wx.CallAfter(main_frame.update_spectrogram, recorded_data)  # update
-                wx.CallAfter(main_frame.update_waveform, recorded_data)
         except sd.PortAudioError as e:
             print(f"Error during playback: {e}")
             if main_frame:
@@ -104,8 +106,17 @@ def on_record_tray(icon, item):
         print("Already recording.")
 
 
-def on_play_tray(icon, item):
-    threading.Thread(target=play_audio).start()
+def on_developer_mode_toggle(icon, item):
+    global show_developer_mode, main_frame, developer_mode_menu_item, developer_mode_text
+    show_developer_mode = not show_developer_mode
+    if main_frame:
+        wx.CallAfter(main_frame.toggle_developer_mode_visibility, show_developer_mode)
+    if show_developer_mode:
+        developer_mode_text = "Hide Developer Mode"  # Change menu item text
+    else:
+        developer_mode_text = "Show Developer Mode"
+    # Update the menu item in the tray
+    tray_icon.update_menu()
 
 
 # Create the menu *after* defining the functions.
@@ -115,11 +126,14 @@ if not os.path.exists("audio_icon.png"):
 else:
     image = Image.open("audio_icon.png")
 
+developer_mode_menu_item = pystray.MenuItem(
+    lambda text: developer_mode_text, on_developer_mode_toggle
+)
 menu = pystray.Menu(
     pystray.MenuItem("Show UI", on_show_ui),
     pystray.MenuItem("Hide UI", on_hide_ui),
     pystray.MenuItem("Record", on_record_tray),
-    pystray.MenuItem("Play", on_play_tray),
+    developer_mode_menu_item,  # Added dev mode toggle
     pystray.MenuItem("Quit", on_quit_tray),
 )
 
@@ -128,30 +142,50 @@ def create_ui():
     global main_frame, app
     if not app:
         app = wx.App(redirect=False)
-    main_frame = MainFrame(None, "Audio Recorder/Player")
+    main_frame = MainFrame(None, "Kurtis E1")
     return main_frame
 
 
 class MainFrame(wx.Frame):
     def __init__(self, parent, title):
         super().__init__(parent, title=title, style=wx.DEFAULT_FRAME_STYLE)
-        self.panel = wx.Panel(self)
+        # Removed the creation of self.panel
         self.sizer = wx.BoxSizer(wx.VERTICAL)
 
-        self.record_button = wx.Button(self.panel, label="Record")
-        self.play_button = wx.Button(self.panel, label="Play")
-        self.hide_button = wx.Button(self.panel, label="Hide UI")
+        self.record_button = wx.Button(self, label="Record")  # Parent is now self
+        self.hide_button = wx.Button(self, label="Hide UI")  # Parent is now self
 
         self.recording_status_label = wx.StaticText(
-            self.panel, label="Recording Status: Idle"
+            self,
+            label="Recording Status: Idle",  # Parent is now self
         )
         self.playback_status_label = wx.StaticText(
-            self.panel, label="Playback Status: Idle"
+            self,
+            label="Playback Status: Idle",  # Parent is now self
         )
 
-        # Spectrogram setup
+        # Developer mode section
+        self.developer_mode_section = wx.Panel(self)  # Parent is now self
+        self.developer_mode_sizer = wx.BoxSizer(wx.VERTICAL)  # Use a new sizer
+        self.developer_mode_section.SetSizer(
+            self.developer_mode_sizer
+        )  # Set sizer for the panel
+        self.developer_mode_section.Show(
+            show_developer_mode
+        )  # Initially hide/show based on global state
+
+        self.spectrogram_label = wx.StaticText(
+            self.developer_mode_section, label="Spectrogram"
+        )  # Label for spectrogram
+        self.waveform_label = wx.StaticText(
+            self.developer_mode_section, label="Waveform"
+        )  # Label for waveform
+
+        # Spectrogram and Waveform setup
         self.figure = Figure(figsize=(6, 4), dpi=80)
-        self.canvas = FigureCanvas(self.panel, -1, self.figure)
+        self.canvas = FigureCanvas(
+            self.developer_mode_section, -1, self.figure
+        )  # Use developer_mode_section as parent
         self.ax_spectrogram = self.figure.add_subplot(
             211
         )  # Top subplot for spectrogram
@@ -160,27 +194,33 @@ class MainFrame(wx.Frame):
         self.spectrogram_data = None  # To store the spectrogram data
         self.spectrogram_plot = None
 
-        # Waveform setup
         self.ax_waveform = self.figure.add_subplot(212)  # Bottom subplot for waveform
         self.ax_waveform.set_xlabel("Time (s)")
         self.ax_waveform.set_ylabel("Amplitude")
         self.waveform_data = None
         self.waveform_plot = None
 
+        self.developer_mode_sizer.Add(self.spectrogram_label, 0, wx.ALL, 5)  # Add label
+        self.developer_mode_sizer.Add(
+            self.canvas, 1, wx.EXPAND | wx.ALL, 5
+        )  # Add the canvas to thesizer
+        self.developer_mode_sizer.Add(self.waveform_label, 0, wx.ALL, 5)  # Add label
+
         self.sizer.Add(self.record_button, 0, wx.ALL | wx.EXPAND, 5)
-        self.sizer.Add(self.play_button, 0, wx.ALL | wx.EXPAND, 5)
+        self.sizer.Add(self.hide_button, 0, wx.ALL | wx.EXPAND, 5)
         self.sizer.Add(self.recording_status_label, 0, wx.ALL, 5)
         self.sizer.Add(self.playback_status_label, 0, wx.ALL, 5)
         self.sizer.Add(
-            self.canvas, 1, wx.EXPAND | wx.ALL, 5
-        )  # Add the canvas to the sizer
-        self.sizer.Add(self.hide_button, 0, wx.ALL | wx.EXPAND, 5)
+            self.developer_mode_section, 1, wx.EXPAND | wx.ALL, 5
+        )  # Add dev mode section
 
-        self.panel.SetSizer(self.sizer)
+        # self.panel.SetSizer(self.sizer)  # Removed
+        self.SetSizer(self.sizer)  # Set the sizer for the frame.
         self.sizer.Fit(self)
+        self.SetInitialSize((400, -1))  # Set fixed width, and initial height
+        self.Layout()  # Add this line
 
         self.record_button.Bind(wx.EVT_BUTTON, self.on_record_button)
-        self.play_button.Bind(wx.EVT_BUTTON, self.on_play_button)
         self.hide_button.Bind(wx.EVT_BUTTON, self.on_hide_button)
         self.Bind(wx.EVT_CLOSE, self.on_close)
         self.is_always_on_top = False
@@ -192,9 +232,6 @@ class MainFrame(wx.Frame):
             wx.MessageBox(
                 "Already recording.", "Warning", wx.OK | wx.ICON_WARNING, self
             )
-
-    def on_play_button(self, event):
-        threading.Thread(target=play_audio).start()
 
     def on_hide_button(self, event):
         self.Hide()
@@ -253,13 +290,24 @@ class MainFrame(wx.Frame):
             self.ax_waveform.set_ylabel("Amplitude")
             self.canvas.draw()
 
+    def toggle_developer_mode_visibility(self, show):
+        self.developer_mode_section.Show(show)
+        if show:
+            self.sizer.Show(self.developer_mode_section)
+        else:
+            self.sizer.Hide(self.developer_mode_section)
+        self.sizer.Layout()
+        self.Fit()  # tell the sizer to fit
+        self.Layout()
+        self.Fit()
+
 
 if __name__ == "__main__":
     app = wx.App(redirect=False)
     main_frame = create_ui()
     main_frame.Show()
 
-    icon = pystray.Icon("Audio App", image, "Simple Audio Recorder/Player", menu)
+    icon = pystray.Icon("Audio App", image, "Kurtis E1", menu)
     tray_icon = icon
 
     # Run the tray icon in a separate thread
