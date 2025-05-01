@@ -107,7 +107,7 @@ def on_record_tray(icon, item):
 
 
 def on_developer_mode_toggle(icon, item):
-    global show_developer_mode, main_frame, developer_mode_menu_item, developer_mode_text
+    global show_developer_mode, main_frame, developer_mode_menu_item, developer_mode_text  # noqa
     show_developer_mode = not show_developer_mode
     if main_frame:
         wx.CallAfter(main_frame.toggle_developer_mode_visibility, show_developer_mode)
