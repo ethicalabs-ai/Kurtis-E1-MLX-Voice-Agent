@@ -132,7 +132,7 @@ developer_mode_menu_item = pystray.MenuItem(
 menu = pystray.Menu(
     pystray.MenuItem("Show UI", on_show_ui),
     pystray.MenuItem("Hide UI", on_hide_ui),
-    pystray.MenuItem("Record", on_record_tray),
+    pystray.MenuItem("Ask Kurtis", on_record_tray),
     developer_mode_menu_item,  # Added dev mode toggle
     pystray.MenuItem("Quit", on_quit_tray),
 )
@@ -152,7 +152,7 @@ class MainFrame(wx.Frame):
         # Removed the creation of self.panel
         self.sizer = wx.BoxSizer(wx.VERTICAL)
 
-        self.record_button = wx.Button(self, label="Record")  # Parent is now self
+        self.record_button = wx.Button(self, label="Ask Kurtis")  # Parent is now self
         self.hide_button = wx.Button(self, label="Hide UI")  # Parent is now self
 
         self.recording_status_label = wx.StaticText(
@@ -175,11 +175,8 @@ class MainFrame(wx.Frame):
         )  # Initially hide/show based on global state
 
         self.spectrogram_label = wx.StaticText(
-            self.developer_mode_section, label="Spectrogram"
+            self.developer_mode_section, label="Spectrogram and Waveform"
         )  # Label for spectrogram
-        self.waveform_label = wx.StaticText(
-            self.developer_mode_section, label="Waveform"
-        )  # Label for waveform
 
         # Spectrogram and Waveform setup
         self.figure = Figure(figsize=(6, 4), dpi=80)
@@ -204,7 +201,6 @@ class MainFrame(wx.Frame):
         self.developer_mode_sizer.Add(
             self.canvas, 1, wx.EXPAND | wx.ALL, 5
         )  # Add the canvas to thesizer
-        self.developer_mode_sizer.Add(self.waveform_label, 0, wx.ALL, 5)  # Add label
 
         self.sizer.Add(self.record_button, 0, wx.ALL | wx.EXPAND, 5)
         self.sizer.Add(self.hide_button, 0, wx.ALL | wx.EXPAND, 5)
@@ -217,7 +213,7 @@ class MainFrame(wx.Frame):
         # self.panel.SetSizer(self.sizer)  # Removed
         self.SetSizer(self.sizer)  # Set the sizer for the frame.
         self.sizer.Fit(self)
-        self.SetInitialSize((400, -1))  # Set fixed width, and initial height
+        self.SetInitialSize((640, -1))  # Set fixed width, and initial height
         self.Layout()  # Add this line
 
         self.record_button.Bind(wx.EVT_BUTTON, self.on_record_button)
