@@ -1,9 +1,9 @@
+import os
 import pystray
 from PIL import Image
 import sounddevice as sd
 import numpy as np
 import threading
-import os
 import wx
 import matplotlib
 
@@ -31,6 +31,8 @@ developer_mode_menu_item = None  # Global variable for the developer mode menu i
 show_ui_menu_item = None  # Global variable for the show ui menu item
 developer_mode_text = "Show Developer Mode"
 show_ui_text = "Hide UI"
+current_dir = os.path.dirname(os.path.abspath(__file__))
+app_icon = Image.open(os.path.join(current_dir, "assets", "kurtis_icon.png"))
 
 
 def record_audio():
@@ -122,12 +124,6 @@ def on_developer_mode_toggle(icon, item):
 
 
 # Create the menu *after* defining the functions.
-if not os.path.exists("audio_icon.png"):
-    image = Image.new("RGB", (64, 64), color="black")
-    image.save("audio_icon.png")
-else:
-    image = Image.open("audio_icon.png")
-
 developer_mode_menu_item = pystray.MenuItem(
     lambda text: developer_mode_text, on_developer_mode_toggle
 )
@@ -311,7 +307,7 @@ if __name__ == "__main__":
     main_frame = create_ui()
     main_frame.Show()
 
-    icon = pystray.Icon("Audio App", image, "Kurtis E1", menu)
+    icon = pystray.Icon("Kurtis E1 App", app_icon, "Kurtis E1", menu)
     tray_icon = icon
 
     # Run the tray icon in a separate thread
