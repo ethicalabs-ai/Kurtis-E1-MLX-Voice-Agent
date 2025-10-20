@@ -20,7 +20,7 @@ To run this project, you'll need:
 - Python >=3.11
 - Open-AI compatible API endpoint (Ollama, LM Studio, vLLM...)
 
-Default Open-AI API endpoint (mlx-lm) is set as default and already pre-installed: 
+Default Open-AI API endpoint (mlx-lm) is set as default and already pre-installed:
 
 ```
 $ mlx_lm.server
