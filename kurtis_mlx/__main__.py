@@ -6,7 +6,8 @@ from multiprocessing import Process, Queue as MPQueue
 from kurtis_mlx import config
 from kurtis_mlx.workers.tts import tts_worker
 from kurtis_mlx.workers.sound import sd_worker
-from kurtis_mlx.handlers import handle_interaction
+from kurtis_mlx.workers.sip import sip_worker
+from kurtis_mlx.handlers import handle_interaction, handle_sip_interaction
 
 
 console = Console()
@@ -40,7 +41,7 @@ console = Console()
 )
 @click.option(
     "--llm-model",
-    default="ethicalabs/Kurtis-E1.1-Qwen2.5-3B-Instruct-mlx-4Bit",
+    default="hf.co/ethicalabs/Kurtis-E1.1-Qwen2.5-3B-Instruct-IQ4_XS-GGUF",
     help="LLM model identifier.",
 )
 @click.option(
@@ -48,8 +49,17 @@ console = Console()
 )
 @click.option(
     "--translation-model",
-    default="ethicalabs/TowerInstruct-7B-v0.2-mlx-4Bit",
+    default="hf.co/mradermacher/TowerInstruct-7B-v0.2-GGUF:Q4_K_S",
     help="Model to use for translation.",
+)
+@click.option("--sip", is_flag=True, help="Enable SIP/VoIP phone call mode.")
+@click.option("--sip-server", help="SIP server (domain or IP).")
+@click.option("--sip-port", default=5060, help="SIP server port.")
+@click.option("--sip-user", help="SIP username.")
+@click.option(
+    "--sip-password",
+    help="SIP password (or set SIP_PASSWORD env var).",
+    envvar="SIP_PASSWORD",
 )
 def main(
     language,
@@ -61,11 +71,22 @@ def main(
     llm_model,
     translate,
     translation_model,
+    sip,
+    sip_server,
+    sip_port,
+    sip_user,
+    sip_password,
 ):
+    if sip and not all([sip_server, sip_user, sip_password]):
+        console.print(
+            "[bold red]For SIP mode, you must provide --sip-server, --sip-user, and --sip-password.[/bold red]"
+        )
+        return
+
     history = [
         {
             "role": "system",
-            "content": config.SYSTEM_PROMPT,
+            "content": config.SYSTEM_PROMPT.replace("phone call", "conversation"),
         }
     ]
 
@@ -88,50 +109,89 @@ def main(
             text_queue,
             sound_queue,
             full_tts_model,
-            samplerate,
+            samplerate if not sip else 8000,  # Use 8kHz for SIP
             lang_code,
             selected_speaker,
         ),
         daemon=True,
     )
     tts_process.start()
-    sound_process = Process(
-        target=sd_worker,
-        args=(sound_queue, samplerate),
-        daemon=True,
-    )
-    sound_process.start()
+
+    # Start different audio worker based on mode
+    if sip:
+        transcription_queue = MPQueue()
+        sip_process = Process(
+            target=sip_worker,
+            args=(
+                sound_queue,
+                transcription_queue,
+                sip_server,
+                sip_port,
+                sip_user,
+                sip_password,
+            ),
+            daemon=True,
+        )
+        sip_process.start()
+    else:
+        sound_process = Process(
+            target=sd_worker,
+            args=(sound_queue, samplerate),
+            daemon=True,
+        )
+        sound_process.start()
 
     try:
         while True:
-            console.input("Press Enter to begin speaking...")
-            handle_interaction(
-                text_queue,
-                full_whisper_model,
-                client,
-                history,
-                llm_model,
-                max_tokens,
-                samplerate,
-                translate,
-                language,
-                translation_model,
-            )
+            if sip:
+                # In SIP mode, we wait for audio from the sip_worker
+                handle_sip_interaction(
+                    text_queue,
+                    transcription_queue,
+                    full_whisper_model,
+                    client,
+                    history,
+                    llm_model,
+                    max_tokens,
+                    translate,
+                    language,
+                    translation_model,
+                )
+            else:
+                # In standard mode, we prompt for local microphone input
+                console.input("Press Enter to begin speaking...")
+                handle_interaction(
+                    text_queue,
+                    full_whisper_model,
+                    client,
+                    history,
+                    llm_model,
+                    max_tokens,
+                    samplerate,
+                    translate,
+                    language,
+                    translation_model,
+                )
 
     except KeyboardInterrupt:
         console.print("\n[red]KeyboardInterrupt. Exiting...")
+    finally:
+        console.print("\n[blue]Shutting down workers...")
         text_queue.put(None)
         sound_queue.put(None)
-        tts_process.terminate()
-        tts_process.join()
-        sound_process.terminate()
-        sound_process.join()
-    else:
-        console.print("\n[red]Exiting...")
-        tts_process.close()
-        tts_process.join()
-        sound_process.close()
-        sound_process.join()
+
+        tts_process.join(timeout=5)
+        if tts_process.is_alive():
+            tts_process.terminate()
+
+        if sip and "sip_process" in locals():
+            sip_process.join(timeout=5)
+            if sip_process.is_alive():
+                sip_process.terminate()
+        elif not sip and "sound_process" in locals():
+            sound_process.join(timeout=5)
+            if sound_process.is_alive():
+                sound_process.terminate()
 
     console.print("[blue]Session ended.")
 

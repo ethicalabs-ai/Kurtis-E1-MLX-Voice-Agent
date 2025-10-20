@@ -11,6 +11,7 @@ dependencies = [
     "mlx-whisper>=0.4.2",
     "nltk>=3.9.1",
     "openai>=1.68.2",
+    "pyvoip>=1.6.8",
     "rich>=14.2.0",
     "scipy>=1.15.2",
     "sounddevice>=0.5.1",

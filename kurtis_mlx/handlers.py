@@ -61,7 +61,7 @@ def handle_interaction(
         return
 
     console.print("[green]Transcribing...")
-    text = transcribe(audio_np, stt_model_name)
+    text = transcribe(audio_np, stt_model_name, sample_rate=samplerate)
     if not text.strip():
         console.print(
             "[red]No text transcribed. Please ensure your microphone is working."
@@ -80,6 +80,62 @@ def handle_interaction(
         )
         console.print(f"[magenta]Translated to English: {text}")
     console.print(f"[yellow]You: {text}")
+
+    handle_response_and_playback(
+        text,
+        text_queue,
+        client,
+        history,
+        llm_model,
+        max_tokens,
+        translate,
+        language,
+        translation_model,
+    )
+
+
+def handle_sip_interaction(
+    text_queue,
+    transcription_queue,
+    stt_model_name,
+    client,
+    history,
+    llm_model,
+    max_tokens,
+    translate,
+    language,
+    translation_model,
+):
+    """
+    A variation of handle_interaction that gets audio from a queue
+    (fed by the sip_worker) instead of recording directly.
+    """
+    # This will block until the sip_worker puts audio in the queue
+    audio_np = transcription_queue.get()
+    if audio_np is None:  # Shutdown signal
+        return
+
+    console.print("[green]Transcribing incoming call audio...")
+    # SIP audio is 8kHz
+    text = transcribe(audio_np, stt_model_name, sample_rate=8000)
+
+    if not text.strip():
+        console.print("[yellow]Transcription empty, waiting for more audio.[/yellow]")
+        return
+
+    console.print(f"[yellow]Caller: {text}")
+
+    if translate and language != "english":
+        text = translate_text(
+            text,
+            client,
+            language,
+            "english",
+            config,
+            translation_model=translation_model,
+            max_tokens=max_tokens,
+        )
+        console.print(f"[magenta]Translated to English: {text}")
 
     handle_response_and_playback(
         text,
