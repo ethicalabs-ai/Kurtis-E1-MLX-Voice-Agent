@@ -15,6 +15,7 @@ dependencies = [
     "rich>=14.2.0",
     "scipy>=1.15.2",
     "sounddevice>=0.5.1",
+    "webrtcvad-wheels>=2.0.14",
 ]
 
 [dependency-groups]

@@ -2,12 +2,22 @@ import time
 import socket
 import threading
 import numpy as np
+import webrtcvad
+import collections
 from rich.console import Console
 from pyVoIP.VoIP import VoIPPhone, InvalidStateError, CallState
 
 console = Console()
 
 SAMPLE_RATE = 8000  # G.711 uses an 8kHz sample rate
+
+# VAD Constants
+VAD_AGGRESSIVENESS = 3  # 0 to 3 (most aggressive)
+VAD_FRAME_MS = 30  # 10, 20, or 30
+VAD_FRAME_SAMPLES = int(SAMPLE_RATE * (VAD_FRAME_MS / 1000.0))
+VAD_FRAME_BYTES = VAD_FRAME_SAMPLES * 2  # 16-bit PCM
+SILENCE_FRAMES_THRESHOLD = 25  # ~750ms of silence (25 * 30ms)
+MIN_SPEECH_SAMPLES = SAMPLE_RATE // 4
 
 
 def get_local_ip():
@@ -93,15 +103,75 @@ class SipClient:
             time.sleep(0.5)
 
     def _read_loop(self, call):
-        """Reads audio from the call and puts it into the transcription queue."""
+        """
+        Reads audio, buffers it, and puts complete utterances into
+        the transcription queue using VAD.
+        """
+        vad = webrtcvad.Vad(VAD_AGGRESSIVENESS)
+        audio_buffer = bytearray()
+        speech_frames = collections.deque()
+        triggered = False
+        silence_frames = 0
+
+        console.print("[VAD] Listening for speech...")
+
         while self.active_call == call:
             try:
-                # read_audio() provides 16-bit linear PCM audio as bytes
                 audio_data = call.read_audio()
-                if audio_data:
-                    # Convert raw bytes to a numpy array for the STT worker
-                    pcm_data = np.frombuffer(audio_data, dtype=np.int16)
-                    self.queues["transcription"].put(pcm_data)
+                if not audio_data:
+                    continue
+
+                audio_buffer.extend(audio_data)
+
+                # Process audio in VAD-required frame sizes
+                while len(audio_buffer) >= VAD_FRAME_BYTES:
+                    frame = audio_buffer[:VAD_FRAME_BYTES]
+                    del audio_buffer[:VAD_FRAME_BYTES]
+
+                    try:
+                        is_speech = vad.is_speech(frame, SAMPLE_RATE)
+                    except Exception as e:
+                        console.print(f"[VAD Error] {e} - skipping frame.")
+                        continue
+
+                    if triggered:
+                        # We are in a speech segment
+                        speech_frames.append(frame)
+                        if not is_speech:
+                            silence_frames += 1
+                            if silence_frames > SILENCE_FRAMES_THRESHOLD:
+                                # End of speech detected
+                                console.print("[VAD] End of speech detected.")
+                                complete_speech_bytes = b"".join(speech_frames)
+                                pcm_data = np.frombuffer(
+                                    complete_speech_bytes, dtype=np.int16
+                                )
+                                if len(pcm_data) > MIN_SPEECH_SAMPLES:
+                                    console.print(
+                                        f"[VAD] Queuing {len(pcm_data)} audio samples for transcription."
+                                    )
+                                    self.queues["transcription"].put(pcm_data)
+                                else:
+                                    console.print(
+                                        f"[VAD] Discarding short audio segment ({len(pcm_data)} samples)."
+                                    )
+
+                                # Reset
+                                triggered = False
+                                speech_frames.clear()
+                                silence_frames = 0
+                        else:
+                            # Still speech, reset silence counter
+                            silence_frames = 0
+                    else:
+                        # We are not in a speech segment
+                        if is_speech:
+                            # Start of speech detected
+                            console.print("[VAD] Start of speech detected.")
+                            triggered = True
+                            speech_frames.append(frame)
+                            silence_frames = 0
+
             except InvalidStateError:
                 console.print("[SIP] Read loop ending, call state invalid.")
                 break

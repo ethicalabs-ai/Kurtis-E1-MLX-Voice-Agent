@@ -123,8 +123,8 @@ def main(
         sip_process = Process(
             target=sip_worker,
             args=(
-                sound_queue,
                 transcription_queue,
+                sound_queue,
                 sip_server,
                 sip_port,
                 sip_user,
