@@ -63,7 +63,9 @@ class SipClient:
 
             # Start I/O threads and state monitor
             self.reading_thread = threading.Thread(target=self._read_loop, args=(call,))
-            self.writing_thread = threading.Thread(target=self._write_loop, args=(call,))
+            self.writing_thread = threading.Thread(
+                target=self._write_loop, args=(call,)
+            )
             self.monitor_thread = threading.Thread(
                 target=self._monitor_call_state, args=(call,)
             )
@@ -146,7 +148,9 @@ class SipClient:
         except KeyboardInterrupt:
             console.print("[SIP] Stopping SIP client...")
         except Exception as e:
-            console.print(f"[bold red][SIP Client Error] An unexpected error occurred: {e}[/bold red]")
+            console.print(
+                f"[bold red][SIP Client Error] An unexpected error occurred: {e}[/bold red]"
+            )
         finally:
             if self.phone:
                 self.phone.stop()
