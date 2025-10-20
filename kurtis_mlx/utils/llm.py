@@ -31,4 +31,8 @@ def translate_text(
         max_tokens=max_tokens,
         temperature=temperature,
     )
-    return translation.choices[0].text.strip()
+    text = translation.choices[0].text.strip()
+    stop_token = "</s>"
+    if stop_token in text:  # handle a bug in mlx-lm server + TowerInstruct
+        text = text.split(stop_token)[0]
+    return text

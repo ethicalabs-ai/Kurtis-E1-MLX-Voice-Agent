@@ -2,7 +2,7 @@
 
 A privacy-focused, **offline voice assistant for macOS**, powered by:
 
-- 🧠 Local LLM inference via [Ollama](https://ollama.com/) (replaceable with [LM Studio](https://lmstudio.ai) or any OpenAI-compatible API endpoint)
+- 🧠 Local LLM inference via [mlx-lm](https://github.com/ml-explore/mlx-lm) (replaceable with any OpenAI-compatible API endpoint)
 - 🎤 Speech-to-text via [MLX Whisper](https://github.com/ml-explore/mlx-examples/tree/main/whisper)
 - 🌍 Offline translations via [Unbabel/TowerInstruct-7B-v0.2](https://huggingface.co/Unbabel/TowerInstruct-7B-v0.2)
 - 🗣️ High-quality multilingual TTS (currently using XTTS v2)
@@ -20,21 +20,19 @@ To run this project, you'll need:
 - Python >=3.11
 - Open-AI compatible API endpoint (Ollama, LM Studio, vLLM...)
 
-Default Open-AI API endpoint (Ollama) is set as default. For LM Studio you can set the following environment variables:
+Default Open-AI API endpoint (mlx-lm) is set as default and already pre-installed: 
+
+```
+$ mlx_lm.server
+2025-10-19 20:24:49,928 - INFO - Starting httpd at 127.0.0.1 on port 8080
+```
+
+For LM Studio you can set the following environment variables:
 
 ```
 # Remember to start LM Studio server.
 export OPENAI_API_URL=http://localhost:1234/v1
 export OPENAI_API_KEY=lmstudio
-```
-
-Remember to pull your model from Ollama (or LM Studio) before running the experiment.
-
-```
-# Default Ollama GGUF models
-
-ollama pull hf.co/ethicalabs/Kurtis-E1-SmolLM2-1.7B-Instruct-Q4_K_M-GGUF
-ollama pull hf.co/mradermacher/TowerInstruct-7B-v0.2-GGUF:Q4_K_S
 ```
 
 
