@@ -34,8 +34,6 @@ def tts_worker(text_queue, sound_queue, tts_model, samplerate, lang_code, speake
 
         sentences = clean_text(text.strip())
 
-        # Generate all audio first, then send sequentially
-        all_audio = []
         for sentence in sentences:
             waveform_list = tts.tts(sentence, language=lang_code, speaker=speaker)
             waveform_np = np.asarray(waveform_list, dtype=np.float32)
@@ -50,8 +48,4 @@ def tts_worker(text_queue, sound_queue, tts_model, samplerate, lang_code, speake
             else:
                 # No resampling needed, use the original audio
                 waveform_resampled = waveform_np
-            all_audio.append(waveform_resampled.tolist())
-
-        # Send as one logical unit
-        for audio_segment in all_audio:
-            sound_queue.put(audio_segment)
+            sound_queue.put(waveform_resampled.tolist())

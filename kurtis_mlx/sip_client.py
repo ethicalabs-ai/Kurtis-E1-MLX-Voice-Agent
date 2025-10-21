@@ -13,12 +13,12 @@ console = Console()
 SAMPLE_RATE = 8000  # G.711 uses an 8kHz sample rate
 
 # VAD Constants
-VAD_AGGRESSIVENESS = 3  # 0 to 3 (most aggressive)
+VAD_AGGRESSIVENESS = 2  # 0 to 3 (most aggressive)
 VAD_FRAME_MS = 30  # 10, 20, or 30
 VAD_FRAME_SAMPLES = int(SAMPLE_RATE * (VAD_FRAME_MS / 1000.0))
 # This is for 16-bit MONO PCM
 VAD_FRAME_BYTES = VAD_FRAME_SAMPLES * 2
-SILENCE_FRAMES_THRESHOLD = 20  # ~600ms of silence
+SILENCE_FRAMES_THRESHOLD = 30  # ~900ms of silence
 MIN_SPEECH_SAMPLES = SAMPLE_RATE * 1  # 0.5s (4000 samples)
 
 
