@@ -28,39 +28,30 @@ def tts_worker(text_queue, sound_queue, tts_model, samplerate, lang_code, speake
     tts = TTS(model_name=tts_model, progress_bar=False, gpu=False)
 
     while True:
-        try:
-            text = text_queue.get()
-        except KeyboardInterrupt:
+        text = text_queue.get()
+        if text is None:
             break
-        else:
-            if text is None:
-                break
-        try:
-            console.print("[blue]Speaking: ...")
-            text = clean_text(text)
-            for t in text:
-                # 1. Generate audio at its native 24kHz
-                waveform_list = tts.tts(t, language=lang_code, speaker=speaker)
-                waveform_np = np.asarray(waveform_list, dtype=np.float32)
 
-                # 2. Resample directly to the target sample rate if needed.
-                #    All complex processing has been removed to ensure intelligibility.
-                if SOURCE_SAMPLE_RATE != TARGET_SAMPLE_RATE:
-                    console.print(
-                        f"[Audio] Resampling audio to {TARGET_SAMPLE_RATE}Hz..."
-                    )
-                    waveform_resampled = librosa.resample(
-                        waveform_np,
-                        orig_sr=SOURCE_SAMPLE_RATE,
-                        target_sr=TARGET_SAMPLE_RATE,
-                        res_type="soxr_vhq",  # Use a high-quality resampler
-                    ).astype(np.float32)
-                else:
-                    # No resampling needed, use the original audio
-                    waveform_resampled = waveform_np
+        sentences = clean_text(text.strip())
 
-                # 3. Put the final, clean audio on the queue
-                sound_queue.put(waveform_resampled.tolist())
+        # Generate all audio first, then send sequentially
+        all_audio = []
+        for sentence in sentences:
+            waveform_list = tts.tts(sentence, language=lang_code, speaker=speaker)
+            waveform_np = np.asarray(waveform_list, dtype=np.float32)
+            if SOURCE_SAMPLE_RATE != TARGET_SAMPLE_RATE:
+                console.print(f"[Audio] Resampling audio to {TARGET_SAMPLE_RATE}Hz...")
+                waveform_resampled = librosa.resample(
+                    waveform_np,
+                    orig_sr=SOURCE_SAMPLE_RATE,
+                    target_sr=TARGET_SAMPLE_RATE,
+                    res_type="soxr_vhq",  # Use a high-quality resampler
+                ).astype(np.float32)
+            else:
+                # No resampling needed, use the original audio
+                waveform_resampled = waveform_np
+            all_audio.append(waveform_resampled.tolist())
 
-        except Exception as e:
-            print(f"[TTS Error]: {e}")
+        # Send as one logical unit
+        for audio_segment in all_audio:
+            sound_queue.put(audio_segment)

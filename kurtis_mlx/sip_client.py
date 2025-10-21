@@ -13,13 +13,13 @@ console = Console()
 SAMPLE_RATE = 8000  # G.711 uses an 8kHz sample rate
 
 # VAD Constants
-VAD_AGGRESSIVENESS = 2  # 0 to 3 (most aggressive)
+VAD_AGGRESSIVENESS = 1  # 0 to 3 (most aggressive)
 VAD_FRAME_MS = 30  # 10, 20, or 30
 VAD_FRAME_SAMPLES = int(SAMPLE_RATE * (VAD_FRAME_MS / 1000.0))
 # This is for 16-bit MONO PCM
 VAD_FRAME_BYTES = VAD_FRAME_SAMPLES * 2
-SILENCE_FRAMES_THRESHOLD = 25  # ~750ms of silence
-MIN_SPEECH_SAMPLES = SAMPLE_RATE // 2  # 0.5s (4000 samples)
+SILENCE_FRAMES_THRESHOLD = 40  # ~1200ms of silence
+MIN_SPEECH_SAMPLES = SAMPLE_RATE * 1  # 0.5s (4000 samples)
 
 
 def get_local_ip():
@@ -55,6 +55,9 @@ class SipClient:
         self._port = port
         self._user = user
         self._password = password
+        self.playback_timestamps = collections.deque()
+        self.playback_lock = threading.Lock()
+        self.EXCLUSION_WINDOW = 2.0  # 2-second exclusion window
 
     def handle_incoming_call(self, call):
         if self.active_call:
@@ -120,10 +123,49 @@ class SipClient:
 
         while self.active_call == call:
             try:
-                # 1. Read the 8-bit unsigned PCM MONO data
+                current_time = time.time()
+                with self.playback_lock:
+                    # Remove old timestamps
+                    while (
+                        self.playback_timestamps
+                        and current_time - self.playback_timestamps[0]
+                        > self.EXCLUSION_WINDOW
+                    ):
+                        old_ts = self.playback_timestamps.popleft()
+                        console.print(
+                            f"[DEBUG] Removed old timestamp: {current_time - old_ts:.2f}s ago"
+                        )
+
+                    # Check if we're in exclusion window
+                    is_excluded = bool(self.playback_timestamps)
+                    if is_excluded:
+                        latest_playback = self.playback_timestamps[-1]
+                        time_since_playback = current_time - latest_playback
+                        console.print(
+                            f"[DEBUG] Exclusion check: {time_since_playback:.2f}s since playback, threshold: {self.EXCLUSION_WINDOW}s"
+                        )
+
+                if is_excluded:
+                    # Read and discard audio to keep buffer clear
+                    discarded_audio = call.read_audio()
+                    if discarded_audio:
+                        self.debug_counter += 1
+                        if self.debug_counter % 50 == 0:  # Log every 50 discards
+                            console.print(
+                                f"[DEBUG] Discarding audio during exclusion (count: {self.debug_counter})"
+                            )
+                    time.sleep(0.01)
+                    continue
+                else:
+                    self.debug_counter = 0  # Reset counter when not excluding
+
+                # Normal audio processing
                 pcm_8_unsigned_bytes = call.read_audio()
                 if not pcm_8_unsigned_bytes:
                     continue
+
+                # Log when we're actually processing audio
+                # console.print("[DEBUG] Processing audio (not in exclusion window)")
 
                 # 2. Convert 8-bit unsigned (0 to 255) to 8-bit signed (-128 to 127)
                 # '1' is the width (8-bit)
@@ -203,6 +245,10 @@ class SipClient:
                 # 1. Get the float audio list from TTS worker
                 audio_list = self.queues["playback"].get()
                 if audio_list is not None:
+                    # Record playback start time
+                    playback_start = time.time()
+                    with self.playback_lock:
+                        self.playback_timestamps.append(playback_start)
                     # 2. Convert to a numpy float32 array.
                     audio_np_float = np.asarray(audio_list, dtype=np.float32)
 
