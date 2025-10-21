@@ -1,20 +1,24 @@
+import librosa
 import numpy as np
 import mlx_whisper
-from scipy.signal import resample
 
 
-def transcribe(audio_np, stt_model_name, sample_rate=16000):
+TARGET_SAMPLE_RATE = 16000
+
+
+def transcribe(audio_np, stt_model_name, sample_rate=TARGET_SAMPLE_RATE):
     """
     Transcribes audio to text using mlx-whisper.
     The sample rate of the audio must be provided.
     """
     # Whisper expects audio at 16kHz. We need to resample if it's different.
-    if sample_rate != 16000:
-        resampling_factor = 16000 / sample_rate
-        num_samples = int(len(audio_np) * resampling_factor)
-
-        # Do NOT cast to int16. resample() outputs a float.
-        audio_resampled = resample(audio_np, num_samples)
+    if sample_rate != TARGET_SAMPLE_RATE:
+        audio_resampled = librosa.resample(
+            audio_np,
+            orig_sr=sample_rate,
+            target_sr=TARGET_SAMPLE_RATE,
+            res_type="soxr_vhq",  # Use a high-quality resampler
+        ).astype(np.float32)
     else:
         audio_resampled = audio_np
 
