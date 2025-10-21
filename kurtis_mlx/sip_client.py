@@ -4,6 +4,7 @@ import threading
 import numpy as np
 import webrtcvad
 import collections
+import audioop
 from rich.console import Console
 from pyVoIP.VoIP import VoIPPhone, InvalidStateError, CallState
 
@@ -15,9 +16,10 @@ SAMPLE_RATE = 8000  # G.711 uses an 8kHz sample rate
 VAD_AGGRESSIVENESS = 3  # 0 to 3 (most aggressive)
 VAD_FRAME_MS = 30  # 10, 20, or 30
 VAD_FRAME_SAMPLES = int(SAMPLE_RATE * (VAD_FRAME_MS / 1000.0))
-VAD_FRAME_BYTES = VAD_FRAME_SAMPLES * 2  # 16-bit PCM
-SILENCE_FRAMES_THRESHOLD = 25  # ~750ms of silence (25 * 30ms)
-MIN_SPEECH_SAMPLES = SAMPLE_RATE // 4
+# This is for 16-bit MONO PCM
+VAD_FRAME_BYTES = VAD_FRAME_SAMPLES * 2
+SILENCE_FRAMES_THRESHOLD = 25  # ~750ms of silence
+MIN_SPEECH_SAMPLES = SAMPLE_RATE // 2  # 0.5s (4000 samples)
 
 
 def get_local_ip():
@@ -104,10 +106,11 @@ class SipClient:
 
     def _read_loop(self, call):
         """
-        Reads audio, buffers it, and puts complete utterances into
-        the transcription queue using VAD.
+        Reads 8-bit unsigned PCM audio, converts it to 16-bit signed PCM,
+        and puts complete 16-bit utterances into the queue using VAD.
         """
         vad = webrtcvad.Vad(VAD_AGGRESSIVENESS)
+        # This buffer will hold the 16-bit MONO PCM data
         audio_buffer = bytearray()
         speech_frames = collections.deque()
         triggered = False
@@ -117,13 +120,23 @@ class SipClient:
 
         while self.active_call == call:
             try:
-                audio_data = call.read_audio()
-                if not audio_data:
+                # 1. Read the 8-bit unsigned PCM MONO data
+                pcm_8_unsigned_bytes = call.read_audio()
+                if not pcm_8_unsigned_bytes:
                     continue
 
-                audio_buffer.extend(audio_data)
+                # 2. Convert 8-bit unsigned (0 to 255) to 8-bit signed (-128 to 127)
+                # '1' is the width (8-bit)
+                pcm_8_signed_bytes = audioop.bias(pcm_8_unsigned_bytes, 1, -128)
 
-                # Process audio in VAD-required frame sizes
+                # 3. Convert 8-bit signed to 16-bit signed
+                # '1' is input width, '2' is output width
+                pcm_16_signed_bytes = audioop.lin2lin(pcm_8_signed_bytes, 1, 2)
+
+                # 4. Add the 16-bit MONO data to our buffer
+                audio_buffer.extend(pcm_16_signed_bytes)
+
+                # 5. Process the 16-bit MONO data in VAD-required frame sizes
                 while len(audio_buffer) >= VAD_FRAME_BYTES:
                     frame = audio_buffer[:VAD_FRAME_BYTES]
                     del audio_buffer[:VAD_FRAME_BYTES]
@@ -146,6 +159,7 @@ class SipClient:
                                 pcm_data = np.frombuffer(
                                     complete_speech_bytes, dtype=np.int16
                                 )
+
                                 if len(pcm_data) > MIN_SPEECH_SAMPLES:
                                     console.print(
                                         f"[VAD] Queuing {len(pcm_data)} audio samples for transcription."
@@ -180,16 +194,41 @@ class SipClient:
                 break
 
     def _write_loop(self, call):
-        """Gets audio from the playback queue and writes it to the call."""
+        """
+        Gets 16-bit signed PCM audio, compands it (using A-law) to preserve quality,
+        then converts to 8-bit unsigned PCM for the call.
+        """
         while self.active_call == call:
             try:
-                # The TTS worker produces a list of floats
+                # 1. Get the 16-bit, 8kHz, float MONO audio list from TTS worker
                 audio_list = self.queues["playback"].get()
                 if audio_list is not None:
-                    # Convert float audio to 16-bit PCM for the library
+                    # 2. Convert float audio to 16-bit PCM MONO numpy array
                     audio_np_float = np.asarray(audio_list, dtype=np.float32)
                     audio_np_int16 = (audio_np_float * 32767).astype(np.int16)
-                    call.write_audio(audio_np_int16.tobytes())
+
+                    # 3. Convert the 16-bit PCM MONO data to raw bytes
+                    pcm_16_signed_bytes = audio_np_int16.tobytes()
+
+                    # We use G.711 A-law companding to squeeze the 16-bit
+                    # dynamic range into an 8-bit range before truncation.
+
+                    # 4. Compand 16-bit PCM to 8-bit A-law
+                    alaw_bytes = audioop.lin2alaw(pcm_16_signed_bytes, 2)
+
+                    # 5. Expand A-law back to 16-bit PCM. This 16-bit signal
+                    #    now has an 8-bit logarithmic dynamic range.
+                    pcm_16_companded_bytes = audioop.alaw2lin(alaw_bytes, 2)
+
+                    # 6. Now truncate the *companded* 16-bit signal to 8-bit signed
+                    pcm_8_signed_bytes = audioop.lin2lin(pcm_16_companded_bytes, 2, 1)
+
+                    # 7. Convert 8-bit signed to 8-bit unsigned
+                    pcm_8_unsigned_bytes = audioop.bias(pcm_8_signed_bytes, 1, 128)
+
+                    # 8. Write the 8-bit unsigned PCM data to the call
+                    call.write_audio(pcm_8_unsigned_bytes)
+
             except InvalidStateError:
                 console.print("[SIP] Write loop ending, call state invalid.")
                 break

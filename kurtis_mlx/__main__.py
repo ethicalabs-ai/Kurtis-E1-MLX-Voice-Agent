@@ -41,7 +41,7 @@ console = Console()
 )
 @click.option(
     "--llm-model",
-    default="hf.co/ethicalabs/Kurtis-E1.1-Qwen2.5-3B-Instruct-IQ4_XS-GGUF",
+    default="linroger023/Kurtis-E1.1-Qwen2.5-3B-Instruct-mlx-8Bit",
     help="LLM model identifier.",
 )
 @click.option(
@@ -49,7 +49,7 @@ console = Console()
 )
 @click.option(
     "--translation-model",
-    default="hf.co/mradermacher/TowerInstruct-7B-v0.2-GGUF:Q4_K_S",
+    default="ethicalabs/TowerInstruct-7B-v0.2-mlx-4Bit",
     help="Model to use for translation.",
 )
 @click.option("--sip", is_flag=True, help="Enable SIP/VoIP phone call mode.")
