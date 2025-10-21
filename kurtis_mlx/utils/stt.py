@@ -14,7 +14,7 @@ def transcribe(audio_np, stt_model_name, sample_rate=TARGET_SAMPLE_RATE):
     # Whisper expects audio at 16kHz. We need to resample if it's different.
     if sample_rate != TARGET_SAMPLE_RATE:
         audio_resampled = librosa.resample(
-            audio_np,
+            np.asarray(audio_np, dtype=np.float32),
             orig_sr=sample_rate,
             target_sr=TARGET_SAMPLE_RATE,
             res_type="soxr_vhq",  # Use a high-quality resampler
