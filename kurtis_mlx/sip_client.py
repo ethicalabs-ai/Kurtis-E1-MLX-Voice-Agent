@@ -42,13 +42,14 @@ class SipClient:
     Handles registration, incoming calls, and media bridging using I/O threads.
     """
 
-    def __init__(self, server, user, password, port, queues):
+    def __init__(self, server, user, password, port, queues, debug=False):
         self.queues = queues
         self.active_call = None
         self.phone = None
         self.reading_thread = None
         self.writing_thread = None
         self.monitor_thread = None
+        self.debug = debug
 
         # Store connection details to initialize the phone in the run method
         self._server = server
@@ -132,25 +133,29 @@ class SipClient:
                         > self.EXCLUSION_WINDOW
                     ):
                         old_ts = self.playback_timestamps.popleft()
-                        console.print(
-                            f"[DEBUG] Removed old timestamp: {current_time - old_ts:.2f}s ago"
-                        )
+                        if self.debug:
+                            console.print(
+                                f"[DEBUG] Removed old timestamp: {current_time - old_ts:.2f}s ago"
+                            )
 
                     # Check if we're in exclusion window
                     is_excluded = bool(self.playback_timestamps)
                     if is_excluded:
                         latest_playback = self.playback_timestamps[-1]
                         time_since_playback = current_time - latest_playback
-                        console.print(
-                            f"[DEBUG] Exclusion check: {time_since_playback:.2f}s since playback, threshold: {self.EXCLUSION_WINDOW}s"
-                        )
+                        if self.debug:
+                            console.print(
+                                f"[DEBUG] Exclusion check: {time_since_playback:.2f}s since playback, threshold: {self.EXCLUSION_WINDOW}s"
+                            )
 
                 if is_excluded:
                     # Read and discard audio to keep buffer clear
                     discarded_audio = call.read_audio()
                     if discarded_audio:
                         self.debug_counter += 1
-                        if self.debug_counter % 50 == 0:  # Log every 50 discards
+                        if (
+                            self.debug_counter % 50 == 0 and self.debug
+                        ):  # Log every 50 discards
                             console.print(
                                 f"[DEBUG] Discarding audio during exclusion (count: {self.debug_counter})"
                             )

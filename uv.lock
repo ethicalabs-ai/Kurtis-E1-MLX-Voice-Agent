@@ -1374,7 +1374,7 @@ requires-dist = [
     { name = "mlx-whisper", specifier = ">=0.4.2" },
     { name = "nltk", specifier = ">=3.9.1" },
     { name = "openai", specifier = ">=1.68.2" },
-    { name = "pyvoip", specifier = ">=1.6.8" },
+    { name = "pyvoip", git = "https://github.com/tayler6000/pyVoIP.git" },
     { name = "resampy", specifier = ">=0.4.3" },
     { name = "rich", specifier = ">=14.2.0" },
     { name = "scipy", specifier = ">=1.15.2" },
@@ -2696,11 +2696,10 @@ wheels = [
 
 [[package]]
 name = "pyvoip"
-version = "1.6.8"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/18/91/6ac36b216260466dec88b93a6f0d617750b4626a223992337c5b53c5f093/pyVoIP-1.6.8.tar.gz", hash = "sha256:faf878a369526205ce6a37357801fbb0247befadd4bc1b4fc63a677651c00588", size = 41122, upload-time = "2024-01-17T07:21:47.299Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/6b/0c/c4ab3c8d5c9e392d5342f7268bc35c3b28ae28a8c4a4c2fdadb64d4fe561/pyVoIP-1.6.8-py3-none-any.whl", hash = "sha256:ef9aa4518a888dc4523e76e36ac8cb2222b2131672eec8fe6f8d225caeed1faf", size = 40531, upload-time = "2024-01-17T07:21:45.41Z" },
+version = "1.6.9"
+source = { git = "https://github.com/tayler6000/pyVoIP.git#2a693346cb493bc3e7a8c4c820a7c88af6deeb92" }
+dependencies = [
+    { name = "audioop-lts", marker = "python_full_version >= '3.13'" },
 ]
 
 [[package]]
