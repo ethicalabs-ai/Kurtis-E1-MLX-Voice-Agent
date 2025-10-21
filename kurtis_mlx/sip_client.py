@@ -13,7 +13,7 @@ console = Console()
 SAMPLE_RATE = 8000  # G.711 uses an 8kHz sample rate
 
 # VAD Constants
-VAD_AGGRESSIVENESS = 3  # 0 to 3 (most aggressive)
+VAD_AGGRESSIVENESS = 0  # 0 to 3 (most aggressive)
 VAD_FRAME_MS = 30  # 10, 20, or 30
 VAD_FRAME_SAMPLES = int(SAMPLE_RATE * (VAD_FRAME_MS / 1000.0))
 # This is for 16-bit MONO PCM
@@ -195,39 +195,33 @@ class SipClient:
 
     def _write_loop(self, call):
         """
-        Gets 16-bit signed PCM audio, compands it (using A-law) to preserve quality,
-        then converts to 8-bit unsigned PCM for the call.
+        Gets audio from the TTS, resamples it to 8kHz using librosa for high
+        quality, converts it to 8-bit unsigned linear PCM, and writes it to the call.
         """
         while self.active_call == call:
             try:
-                # 1. Get the 16-bit, 8kHz, float MONO audio list from TTS worker
+                # 1. Get the float audio list from TTS worker
                 audio_list = self.queues["playback"].get()
                 if audio_list is not None:
-                    # 2. Convert float audio to 16-bit PCM MONO numpy array
+                    # 2. Convert to a numpy float32 array.
                     audio_np_float = np.asarray(audio_list, dtype=np.float32)
-                    audio_np_int16 = (audio_np_float * 32767).astype(np.int16)
 
-                    # 3. Convert the 16-bit PCM MONO data to raw bytes
-                    pcm_16_signed_bytes = audio_np_int16.tobytes()
+                    # --- Cleanest, Most Direct Conversion ---
+                    # 3. Clip the audio to the valid [-1.0, 1.0] range to prevent distortion.
+                    np.clip(audio_np_float, -1.0, 1.0, out=audio_np_float)
 
-                    # We use G.711 A-law companding to squeeze the 16-bit
-                    # dynamic range into an 8-bit range before truncation.
+                    # 4. Scale and shift the float signal directly to the 8-bit unsigned range [0, 255].
+                    audio_np_uint8 = ((audio_np_float * 127.5) + 127.5).astype(np.uint8)
 
-                    # 4. Compand 16-bit PCM to 8-bit A-law
-                    alaw_bytes = audioop.lin2alaw(pcm_16_signed_bytes, 2)
+                    # 5. Convert the numpy array to raw bytes.
+                    pcm_8_unsigned_bytes = audio_np_uint8.tobytes()
+                    # --- End of Conversion ---
 
-                    # 5. Expand A-law back to 16-bit PCM. This 16-bit signal
-                    #    now has an 8-bit logarithmic dynamic range.
-                    pcm_16_companded_bytes = audioop.alaw2lin(alaw_bytes, 2)
-
-                    # 6. Now truncate the *companded* 16-bit signal to 8-bit signed
-                    pcm_8_signed_bytes = audioop.lin2lin(pcm_16_companded_bytes, 2, 1)
-
-                    # 7. Convert 8-bit signed to 8-bit unsigned
-                    pcm_8_unsigned_bytes = audioop.bias(pcm_8_signed_bytes, 1, 128)
-
-                    # 8. Write the 8-bit unsigned PCM data to the call
+                    console.print(
+                        f"[SIP] Streaming {len(pcm_8_unsigned_bytes)} bytes of audio..."
+                    )
                     call.write_audio(pcm_8_unsigned_bytes)
+                    console.print("[SIP] Finished streaming audio.")
 
             except InvalidStateError:
                 console.print("[SIP] Write loop ending, call state invalid.")
