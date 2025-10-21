@@ -27,6 +27,7 @@ def get_local_ip():
         s.connect(("10.255.255.255", 1))
         IP = s.getsockname()[0]
     except Exception:
+        print("Using 127.0.0.1 as local ip.")
         IP = "127.0.0.1"
     finally:
         s.close()
@@ -102,6 +103,7 @@ class SipClient:
                 # Signal the worker that the call has ended by putting None in the queue.
                 # The I/O threads will see active_call is None and terminate.
                 self.queues["transcription"].put(None)
+                self.queues["playback"].put(None)
                 break
             time.sleep(0.5)
 
@@ -167,7 +169,8 @@ class SipClient:
                     continue
 
                 # Log when we're actually processing audio
-                # console.print("[DEBUG] Processing audio (not in exclusion window)")
+                if self.debug:
+                    console.print("[DEBUG] Processing audio (not in exclusion window)")
 
                 # 2. Convert 8-bit unsigned (0 to 255) to 8-bit signed (-128 to 127)
                 # '1' is the width (8-bit)
@@ -247,14 +250,12 @@ class SipClient:
                 # 1. Get the float audio list from TTS worker
                 audio_list = self.queues["playback"].get()
                 if audio_list is not None:
-                    # Record playback start time
-                    playback_start = time.time()
+                    playback_start = time.time()  # Record playback start time
                     with self.playback_lock:
                         self.playback_timestamps.append(playback_start)
                     # 2. Convert to a numpy float32 array.
                     audio_np_float = np.asarray(audio_list, dtype=np.float32)
 
-                    # --- Cleanest, Most Direct Conversion ---
                     # 3. Clip the audio to the valid [-1.0, 1.0] range to prevent distortion.
                     np.clip(audio_np_float, -1.0, 1.0, out=audio_np_float)
 
@@ -263,7 +264,6 @@ class SipClient:
 
                     # 5. Convert the numpy array to raw bytes.
                     pcm_8_unsigned_bytes = audio_np_uint8.tobytes()
-                    # --- End of Conversion ---
 
                     console.print(
                         f"[SIP] Streaming {len(pcm_8_unsigned_bytes)} bytes of audio..."
