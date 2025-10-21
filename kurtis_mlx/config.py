@@ -123,3 +123,13 @@ SPEAKERS = [
     "Luis Moray",
     "Marcos Rudaski",
 ]
+
+# SIP Config
+SIP_SAMPLE_RATE = 8000  # G.711 uses an 8kHz sample rate
+
+# VAD Config
+VAD_AGGRESSIVENESS = int(
+    os.getenv("VAD_AGGRESSIVENESS", "3")
+)  # 0 to 3 (most aggressive)
+VAD_FRAME_MS = int(os.getenv("VAD_FRAME_MS", "30"))  # 10, 20, or 30
+SILENCE_FRAMES_THRESHOLD = 30  # ~900ms of silence

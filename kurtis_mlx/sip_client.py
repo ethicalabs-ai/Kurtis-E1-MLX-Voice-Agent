@@ -8,18 +8,15 @@ import audioop
 from rich.console import Console
 from pyVoIP.VoIP import VoIPPhone, InvalidStateError, CallState
 
+from kurtis_mlx import config
+
 console = Console()
 
-SAMPLE_RATE = 8000  # G.711 uses an 8kHz sample rate
-
 # VAD Constants
-VAD_AGGRESSIVENESS = 3  # 0 to 3 (most aggressive)
-VAD_FRAME_MS = 30  # 10, 20, or 30
-VAD_FRAME_SAMPLES = int(SAMPLE_RATE * (VAD_FRAME_MS / 1000.0))
+VAD_FRAME_SAMPLES = int(config.SIP_SAMPLE_RATE * (config.VAD_FRAME_MS / 1000.0))
 # This is for 16-bit MONO PCM
 VAD_FRAME_BYTES = VAD_FRAME_SAMPLES * 2
-SILENCE_FRAMES_THRESHOLD = 30  # ~900ms of silence
-MIN_SPEECH_SAMPLES = SAMPLE_RATE * 2  # 2s
+MIN_SPEECH_SAMPLES = config.SIP_SAMPLE_RATE * 2  # 2s
 
 
 def get_local_ip():
@@ -113,7 +110,7 @@ class SipClient:
         Reads 8-bit unsigned PCM audio, converts it to 16-bit signed PCM,
         and puts complete 16-bit utterances into the queue using VAD.
         """
-        vad = webrtcvad.Vad(VAD_AGGRESSIVENESS)
+        vad = webrtcvad.Vad(config.VAD_AGGRESSIVENESS)
         # This buffer will hold the 16-bit MONO PCM data
         audio_buffer = bytearray()
         speech_frames = collections.deque()
@@ -189,7 +186,7 @@ class SipClient:
                     del audio_buffer[:VAD_FRAME_BYTES]
 
                     try:
-                        is_speech = vad.is_speech(frame, SAMPLE_RATE)
+                        is_speech = vad.is_speech(frame, config.SIP_SAMPLE_RATE)
                     except Exception as e:
                         console.print(f"[VAD Error] {e} - skipping frame.")
                         continue
@@ -199,7 +196,7 @@ class SipClient:
                         speech_frames.append(frame)
                         if not is_speech:
                             silence_frames += 1
-                            if silence_frames > SILENCE_FRAMES_THRESHOLD:
+                            if silence_frames > config.SILENCE_FRAMES_THRESHOLD:
                                 # End of speech detected
                                 console.print("[VAD] End of speech detected.")
                                 complete_speech_bytes = b"".join(speech_frames)
