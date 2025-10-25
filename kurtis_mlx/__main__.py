@@ -7,6 +7,7 @@ from kurtis_mlx import config
 from kurtis_mlx.workers.tts import tts_worker
 from kurtis_mlx.workers.sound import sd_worker
 from kurtis_mlx.workers.sip import sip_worker
+from kurtis_mlx.workers.mic import mic_worker
 from kurtis_mlx.handlers import handle_interaction, handle_sip_interaction
 
 
@@ -102,6 +103,7 @@ def main(
 
     text_queue = MPQueue()
     sound_queue = MPQueue()
+    transcription_queue = MPQueue()
 
     tts_process = Process(
         target=tts_worker,
@@ -140,6 +142,12 @@ def main(
             daemon=True,
         )
         sound_process.start()
+        mic_process = Process(
+            target=mic_worker,
+            args=(transcription_queue,),
+            daemon=True,
+        )
+        mic_process.start()
 
     try:
         while True:
@@ -158,16 +166,15 @@ def main(
                     translation_model,
                 )
             else:
-                # In standard mode, we prompt for local microphone input
-                console.input("Press Enter to begin speaking...")
+                # In standard mode, we wait for local microphone input
                 handle_interaction(
                     text_queue,
+                    transcription_queue,
                     full_whisper_model,
                     client,
                     history,
                     llm_model,
                     max_tokens,
-                    samplerate,
                     translate,
                     language,
                     translation_model,
@@ -188,10 +195,15 @@ def main(
             sip_process.join(timeout=5)
             if sip_process.is_alive():
                 sip_process.terminate()
-        elif not sip and "sound_process" in locals():
-            sound_process.join(timeout=5)
-            if sound_process.is_alive():
-                sound_process.terminate()
+        elif not sip:
+            if "sound_process" in locals():
+                sound_process.join(timeout=5)
+                if sound_process.is_alive():
+                    sound_process.terminate()
+            if "mic_process" in locals():
+                mic_process.join(timeout=5)
+                if mic_process.is_alive():
+                    mic_process.terminate()
 
     console.print("[blue]Session ended.")
 

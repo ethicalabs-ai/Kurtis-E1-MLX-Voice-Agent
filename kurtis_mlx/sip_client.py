@@ -2,21 +2,16 @@ import time
 import socket
 import threading
 import numpy as np
-import webrtcvad
 import collections
 import audioop
 from rich.console import Console
 from pyVoIP.VoIP import VoIPPhone, InvalidStateError, CallState
 
 from kurtis_mlx import config
+from kurtis_mlx.utils.vad import VADCollector
+
 
 console = Console()
-
-# VAD Constants
-VAD_FRAME_SAMPLES = int(config.SIP_SAMPLE_RATE * (config.VAD_FRAME_MS / 1000.0))
-# This is for 16-bit MONO PCM
-VAD_FRAME_BYTES = VAD_FRAME_SAMPLES * 2
-MIN_SPEECH_SAMPLES = config.SIP_SAMPLE_RATE * 2  # 2s
 
 
 def get_local_ip():
@@ -112,13 +107,16 @@ class SipClient:
         Reads 8-bit unsigned PCM audio, converts it to 16-bit signed PCM,
         and puts complete 16-bit utterances into the queue using VAD.
         """
-        vad = webrtcvad.Vad(config.VAD_AGGRESSIVENESS)
-        # This buffer will hold the 16-bit MONO PCM data
-        audio_buffer = bytearray()
-        speech_frames = collections.deque()
-        triggered = False
-        silence_frames = 0
-
+        # Initialize the VADCollector
+        vad_collector = VADCollector(
+            sample_rate=config.SIP_SAMPLE_RATE,
+            aggressiveness=config.VAD_AGGRESSIVENESS,
+            frame_ms=config.VAD_FRAME_MS,
+            silence_ms=config.SILENCE_FRAMES_THRESHOLD
+            * config.VAD_FRAME_MS,  # e.g. 30 * 30 = 900ms
+            min_speech_ms=2000,  # 2s
+            debug=self.debug,
+        )
         console.print("[VAD] Listening for speech...")
 
         while self.active_call == call:
@@ -172,66 +170,21 @@ class SipClient:
                 if self.debug:
                     console.print("[DEBUG] Processing audio (not in exclusion window)")
 
-                # 2. Convert 8-bit unsigned (0 to 255) to 8-bit signed (-128 to 127)
+                # Convert 8-bit unsigned (0 to 255) to 8-bit signed (-128 to 127)
                 # '1' is the width (8-bit)
                 pcm_8_signed_bytes = audioop.bias(pcm_8_unsigned_bytes, 1, -128)
 
-                # 3. Convert 8-bit signed to 16-bit signed
+                # Convert 8-bit signed to 16-bit signed
                 # '1' is input width, '2' is output width
                 pcm_16_signed_bytes = audioop.lin2lin(pcm_8_signed_bytes, 1, 2)
 
-                # 4. Add the 16-bit MONO data to our buffer
-                audio_buffer.extend(pcm_16_signed_bytes)
-
-                # 5. Process the 16-bit MONO data in VAD-required frame sizes
-                while len(audio_buffer) >= VAD_FRAME_BYTES:
-                    frame = audio_buffer[:VAD_FRAME_BYTES]
-                    del audio_buffer[:VAD_FRAME_BYTES]
-
-                    try:
-                        is_speech = vad.is_speech(frame, config.SIP_SAMPLE_RATE)
-                    except Exception as e:
-                        console.print(f"[VAD Error] {e} - skipping frame.")
-                        continue
-
-                    if triggered:
-                        # We are in a speech segment
-                        speech_frames.append(frame)
-                        if not is_speech:
-                            silence_frames += 1
-                            if silence_frames > config.SILENCE_FRAMES_THRESHOLD:
-                                # End of speech detected
-                                console.print("[VAD] End of speech detected.")
-                                complete_speech_bytes = b"".join(speech_frames)
-                                pcm_data = np.frombuffer(
-                                    complete_speech_bytes, dtype=np.int16
-                                )
-
-                                if len(pcm_data) > MIN_SPEECH_SAMPLES:
-                                    console.print(
-                                        f"[VAD] Queuing {len(pcm_data)} audio samples for transcription."
-                                    )
-                                    self.queues["transcription"].put(pcm_data)
-                                else:
-                                    console.print(
-                                        f"[VAD] Discarding short audio segment ({len(pcm_data)} samples)."
-                                    )
-
-                                # Reset
-                                triggered = False
-                                speech_frames.clear()
-                                silence_frames = 0
-                        else:
-                            # Still speech, reset silence counter
-                            silence_frames = 0
-                    else:
-                        # We are not in a speech segment
-                        if is_speech:
-                            # Start of speech detected
-                            console.print("[VAD] Start of speech detected.")
-                            triggered = True
-                            speech_frames.append(frame)
-                            silence_frames = 0
+                for utterance in vad_collector.process_audio(pcm_16_signed_bytes):
+                    if utterance is not None:
+                        # This is the same logic as [cite: 70, 71]
+                        console.print(
+                            f"[VAD] Queuing {len(utterance)} audio samples for transcription."
+                        )
+                        self.queues["transcription"].put(utterance)
 
             except InvalidStateError:
                 console.print("[SIP] Read loop ending, call state invalid.")

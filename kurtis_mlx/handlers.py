@@ -1,5 +1,4 @@
 from kurtis_mlx import config
-from kurtis_mlx.utils.sound import record_until_enter
 from kurtis_mlx.utils.llm import get_llm_response, translate_text
 from kurtis_mlx.utils.stt import transcribe
 from rich.console import Console
@@ -40,12 +39,12 @@ def handle_response_and_playback(
 
 def handle_interaction(
     text_queue,
+    transcription_queue,
     stt_model_name,
     client,
     history,
     llm_model,
     max_tokens,
-    samplerate,
     translate,
     language,
     translation_model,
@@ -53,15 +52,12 @@ def handle_interaction(
     TARGET_LANGUAGES = [
         lang for lang in config.SUPPORTED_LANGUAGES if lang != "english"
     ]
-    audio_np = record_until_enter(samplerate)
-    if audio_np.size == 0:
-        console.print(
-            "[red]No audio recorded. Please ensure your microphone is working."
-        )
+    audio_np = transcription_queue.get()
+    if audio_np is None:  # Shutdown signal
         return
 
     console.print("[green]Transcribing...")
-    text = transcribe(audio_np, stt_model_name, sample_rate=samplerate)
+    text = transcribe(audio_np, stt_model_name, sample_rate=16000)
     if not text.strip():
         console.print(
             "[red]No text transcribed. Please ensure your microphone is working."
