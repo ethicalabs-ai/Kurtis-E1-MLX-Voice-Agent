@@ -50,7 +50,7 @@ console = Console()
 )
 @click.option(
     "--translation-model",
-    default="ethicalabs/TowerInstruct-7B-v0.2-mlx-4Bit",
+    default="ethicalabs/Tower-Plus-2B-mlx-4Bit",
     help="Model to use for translation.",
 )
 @click.option("--sip", is_flag=True, help="Enable SIP/VoIP phone call mode.")
