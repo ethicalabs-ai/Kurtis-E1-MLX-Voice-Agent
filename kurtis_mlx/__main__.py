@@ -1,7 +1,7 @@
 import click
 from rich.console import Console
 from openai import OpenAI
-from multiprocessing import Process, Queue as MPQueue
+from multiprocessing import Process, Queue as MPQueue, Event
 
 from kurtis_mlx import config
 from kurtis_mlx.workers.tts import tts_worker
@@ -104,6 +104,7 @@ def main(
     text_queue = MPQueue()
     sound_queue = MPQueue()
     transcription_queue = MPQueue()
+    is_busy_event = Event()
 
     tts_process = Process(
         target=tts_worker,
@@ -138,13 +139,13 @@ def main(
     else:
         sound_process = Process(
             target=sd_worker,
-            args=(sound_queue, samplerate),
+            args=(sound_queue, samplerate, is_busy_event),
             daemon=True,
         )
         sound_process.start()
         mic_process = Process(
             target=mic_worker,
-            args=(transcription_queue,),
+            args=(transcription_queue, is_busy_event),
             daemon=True,
         )
         mic_process.start()
@@ -178,6 +179,7 @@ def main(
                     translate,
                     language,
                     translation_model,
+                    is_busy_event,
                 )
 
     except KeyboardInterrupt:
