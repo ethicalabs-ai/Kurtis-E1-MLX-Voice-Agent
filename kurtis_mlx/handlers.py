@@ -43,11 +43,11 @@ def get_validated_transcription(audio_np, stt_model_name, sample_rate):
     Returns the text if it's high quality, otherwise returns None.
     """
     console.print("[green]Transcribing...")
-    # 1. Get the full transcription result
+    # Get the full transcription result
     transcription_result = transcribe(audio_np, stt_model_name, sample_rate=sample_rate)
     text = transcription_result.get("text", "").strip()
 
-    # 2. Check the quality
+    # Check the quality
     avg_confidence = -1.0
     no_speech_prob = 1.0
 
@@ -86,7 +86,7 @@ def get_validated_transcription(audio_np, stt_model_name, sample_rate):
         console.print("[red]No text transcribed.")
         return None
 
-    console.print(f"[red]Text: {text}")
+    # console.print(f"[red]Text: {text}")
     return text
 
 
@@ -113,8 +113,10 @@ def handle_interaction(
     is_busy_event.set()
 
     console.print("[green]Transcribing...")
-    text = get_validated_transcription(audio_np, stt_model_name, sample_rate=16000)
-    if not text:
+    text = (
+        get_validated_transcription(audio_np, stt_model_name, sample_rate=16000) or ""
+    )
+    if not text.strip():
         console.print(
             "[red]No text transcribed. Please ensure your microphone is working."
         )
@@ -170,7 +172,7 @@ def handle_sip_interaction(
 
     console.print("[green]Transcribing incoming call audio...")
     # SIP audio is 8kHz
-    text = get_validated_transcription(audio_np, stt_model_name, sample_rate=8000)
+    text = get_validated_transcription(audio_np, stt_model_name, sample_rate=8000) or ""
 
     if not text:
         console.print("[yellow]Transcription empty, waiting for more audio.[/yellow]")
