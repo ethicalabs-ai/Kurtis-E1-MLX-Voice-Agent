@@ -11,6 +11,13 @@ from kurtis_mlx import config
 from kurtis_mlx.utils.vad import VADCollector
 
 
+TARGET_SAMPLE_RATE = 8000  # G.711 uses 8kHz.
+VAD_FRAME_MS = config.VAD_FRAME_MS  # 30ms
+VAD_BLOCK_SAMPLES = int(
+    TARGET_SAMPLE_RATE * (VAD_FRAME_MS / 1000.0)
+)  # 8000 * 0.030 = 240 samples
+
+
 console = Console()
 
 
@@ -109,12 +116,12 @@ class SipClient:
         """
         # Initialize the VADCollector
         vad_collector = VADCollector(
-            sample_rate=config.SIP_SAMPLE_RATE,
-            aggressiveness=config.VAD_AGGRESSIVENESS,
-            frame_ms=config.VAD_FRAME_MS,
+            sample_rate=config.SIP_SAMPLE_RATE,  # 8000
+            aggressiveness=config.VAD_AGGRESSIVENESS,  # Use config value (default 3)
+            frame_ms=VAD_FRAME_MS,  # from config
             silence_ms=config.SILENCE_FRAMES_THRESHOLD
-            * config.VAD_FRAME_MS,  # e.g. 30 * 30 = 900ms
-            min_speech_ms=2000,  # 2s
+            * VAD_FRAME_MS,  # e.g. 30 * 30 = 900ms
+            min_speech_ms=2000,  # 2 seconds, matches old logic
             debug=self.debug,
         )
         console.print("[VAD] Listening for speech...")
@@ -134,7 +141,6 @@ class SipClient:
                             console.print(
                                 f"[DEBUG] Removed old timestamp: {current_time - old_ts:.2f}s ago"
                             )
-
                     # Check if we're in exclusion window
                     is_excluded = bool(self.playback_timestamps)
                     if is_excluded:
@@ -180,7 +186,6 @@ class SipClient:
 
                 for utterance in vad_collector.process_audio(pcm_16_signed_bytes):
                     if utterance is not None:
-                        # This is the same logic as [cite: 70, 71]
                         console.print(
                             f"[VAD] Queuing {len(utterance)} audio samples for transcription."
                         )
