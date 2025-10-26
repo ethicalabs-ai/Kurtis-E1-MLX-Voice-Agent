@@ -1,8 +1,8 @@
 import os
 
 # OpenAI-compatible endpoint (Ollama, LM Studio, vLLM, etc.)
-OPENAI_API_URL = os.environ.get("OPENAI_API_URL", "http://localhost:11434/v1")
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "ollama")
+OPENAI_API_URL = os.environ.get("OPENAI_API_URL", "http://localhost:8080/v1")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "dummy")
 
 # Kurtis E1 system prompt.
 SYSTEM_PROMPT = "You are Kurtis, an empathetic mental health assistant. Keep responses short and conversational, as if you're on a calm phone call. Don't use glyphs or emoticons."
@@ -123,3 +123,13 @@ SPEAKERS = [
     "Luis Moray",
     "Marcos Rudaski",
 ]
+
+# SIP Config
+SIP_SAMPLE_RATE = 8000  # G.711 uses an 8kHz sample rate
+
+# VAD Config
+VAD_AGGRESSIVENESS = int(
+    os.getenv("VAD_AGGRESSIVENESS", "3")
+)  # 0 to 3 (most aggressive)
+VAD_FRAME_MS = int(os.getenv("VAD_FRAME_MS", "30"))  # 10, 20, or 30
+SILENCE_FRAMES_THRESHOLD = 30  # ~900ms of silence

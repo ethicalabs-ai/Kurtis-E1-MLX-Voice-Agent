@@ -22,13 +22,16 @@ def translate_text(
 ):
     from_lang_str = config.SUPPORTED_LANGUAGES[from_language]["name"]
     to_lang_str = config.SUPPORTED_LANGUAGES[to_language]["name"]
-    prompt = f"""Translate the following text from {from_lang_str} into {to_lang_str}:
+    prompt = f"""Translate the following {from_lang_str} source text to {to_lang_str}:
 {from_lang_str}: {text}
 {to_lang_str}: """
     translation = client.completions.create(
         model=translation_model,
         prompt=prompt,
-        max_tokens=max_tokens,
+        max_tokens=256,
         temperature=temperature,
+        best_of=1,
+        stop="<eos>",
     )
-    return translation.choices[0].text.strip()
+    text = translation.choices[0].text.strip()
+    return text
