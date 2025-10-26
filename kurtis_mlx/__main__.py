@@ -62,6 +62,10 @@ console = Console()
     help="SIP password (or set SIP_PASSWORD env var).",
     envvar="SIP_PASSWORD",
 )
+@click.option(
+    "--assistant-prompt",
+    help="Initial assistant greeting. Assistant will say this and wait for user.",
+)
 def main(
     language,
     speaker,
@@ -77,6 +81,7 @@ def main(
     sip_port,
     sip_user,
     sip_password,
+    assistant_prompt,
 ):
     if sip and not all([sip_server, sip_user, sip_password]):
         console.print(
@@ -87,7 +92,7 @@ def main(
     history = [
         {
             "role": "system",
-            "content": config.SYSTEM_PROMPT.replace("phone call", "conversation"),
+            "content": config.SYSTEM_PROMPT,
         }
     ]
 
@@ -119,6 +124,14 @@ def main(
         daemon=True,
     )
     tts_process.start()
+
+    # Assistant starts with a greeting
+    if assistant_prompt:
+        console.print(f"[cyan]Assistant (Initial): {assistant_prompt}")
+        # [cite_start]Add to history so the LLM knows it said this [cite: 6]
+        history.append({"role": "assistant", "content": assistant_prompt})
+        # [cite_start]Send to TTS queue to be spoken [cite: 7]
+        text_queue.put(assistant_prompt)
 
     # Start different audio worker based on mode
     if sip:

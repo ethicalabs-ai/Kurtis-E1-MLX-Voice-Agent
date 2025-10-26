@@ -5,7 +5,7 @@ OPENAI_API_URL = os.environ.get("OPENAI_API_URL", "http://localhost:8080/v1")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "dummy")
 
 # Kurtis E1 system prompt.
-SYSTEM_PROMPT = "You are Kurtis, an empathetic mental health assistant. Keep responses short and conversational, as if you're on a calm phone call. Don't use glyphs or emoticons."
+SYSTEM_PROMPT = "You are Kurtis, an empathetic mental health assistant. Keep responses short and conversational, as if you're on a calm conversation. Don't use glyphs or emoticons."
 
 # Supported Lannguages
 SUPPORTED_LANGUAGES = {
