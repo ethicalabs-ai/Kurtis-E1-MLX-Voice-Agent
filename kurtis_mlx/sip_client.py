@@ -42,13 +42,23 @@ class SipClient:
     Handles registration, incoming calls, and media bridging using I/O threads.
     """
 
-    def __init__(self, server, user, password, port, queues, debug=False):
+    def __init__(
+        self,
+        server,
+        user,
+        password,
+        port,
+        queues,
+        assistant_prompt_au=None,
+        debug=False,
+    ):
         self.queues = queues
         self.active_call = None
         self.phone = None
         self.reading_thread = None
         self.writing_thread = None
         self.monitor_thread = None
+        self.assistant_prompt_au = assistant_prompt_au
         self.debug = debug
 
         # Store connection details to initialize the phone in the run method
@@ -91,6 +101,10 @@ class SipClient:
             self.reading_thread.start()
             self.writing_thread.start()
             self.monitor_thread.start()
+
+            # Play initial message
+            if self.assistant_prompt_au is not None:
+                self.queues["playback"].put(self.assistant_prompt_au)
 
         except InvalidStateError as e:
             console.print(f"[bold red][SIP] Error answering call: {e}[/bold red]")

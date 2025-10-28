@@ -9,6 +9,7 @@ from kurtis_mlx.workers.sound import sd_worker
 from kurtis_mlx.workers.sip import sip_worker
 from kurtis_mlx.workers.mic import mic_worker
 from kurtis_mlx.handlers import handle_interaction, handle_sip_interaction
+from kurtis_mlx.utils.tts import text_to_speech
 
 
 console = Console()
@@ -126,15 +127,25 @@ def main(
     tts_process.start()
 
     # Assistant starts with a greeting
-    if assistant_prompt:
+    if assistant_prompt and not sip:
         console.print(f"[cyan]Assistant (Initial): {assistant_prompt}")
-        # [cite_start]Add to history so the LLM knows it said this [cite: 6]
+        # Add to history so the LLM knows it said this
+        # TODO: add to history also for SIP call
         history.append({"role": "assistant", "content": assistant_prompt})
-        # [cite_start]Send to TTS queue to be spoken [cite: 7]
-        text_queue.put(assistant_prompt)
 
     # Start different audio worker based on mode
     if sip:
+        if assistant_prompt:
+            assistant_prompt_au = text_to_speech(
+                full_tts_model,
+                lang_code,
+                speaker,
+                22050,
+                8000,
+                assistant_prompt,
+            )
+        else:
+            assistant_prompt_au = None
         transcription_queue = MPQueue()
         sip_process = Process(
             target=sip_worker,
@@ -145,6 +156,7 @@ def main(
                 sip_port,
                 sip_user,
                 sip_password,
+                assistant_prompt_au,
             ),
             daemon=True,
         )
