@@ -5,7 +5,14 @@ console = Console()
 
 
 def sip_worker(
-    transcription_queue, playback_queue, sip_server, sip_port, sip_user, sip_password
+    transcription_queue,
+    playback_queue,
+    sip_server,
+    sip_port,
+    sip_user,
+    sip_password,
+    interrupt_event,
+    assistant_prompt_au,
 ):
     """
     Manages the SIP client in a separate process.
@@ -20,6 +27,8 @@ def sip_worker(
             password=sip_password,
             port=sip_port,
             queues=queues,
+            interrupt_event=interrupt_event,
+            assistant_prompt_au=assistant_prompt_au,
         )
         sip_client.run()
 

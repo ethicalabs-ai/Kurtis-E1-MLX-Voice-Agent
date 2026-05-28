@@ -10,20 +10,33 @@ dependencies = [
     "librosa>=0.11.0",
     "mlx-lm>=0.28.3",
     "mlx-whisper>=0.4.2",
+    "mlx[cpu]>=0.29.3",
     "nltk>=3.9.1",
     "openai>=1.68.2",
+    "pyaudio>=0.2.14",
+    "pynput>=1.8.1",
     "pyvoip>=1.6.8",
     "resampy>=0.4.3",
     "rich>=14.2.0",
     "scipy>=1.15.2",
     "sounddevice>=0.5.1",
     "webrtcvad-wheels>=2.0.14",
+    "whisper-cpp-python>=0.2.0",
+    "wxpython>=4.2.4",
 ]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["kurtis_mlx"]
 
 [dependency-groups]
 dev = [
     "black>=24.10.0",
     "pre-commit>=4.0.1",
+    "pytest>=9.0.2",
     "ruff>=0.7.3",
 ]
 

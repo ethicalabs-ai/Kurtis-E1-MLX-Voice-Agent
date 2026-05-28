@@ -3,6 +3,7 @@ import os
 # OpenAI-compatible endpoint (Ollama, LM Studio, vLLM, etc.)
 OPENAI_API_URL = os.environ.get("OPENAI_API_URL", "http://localhost:8080/v1")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "dummy")
+LLM_MODEL = None  # Will be set by CLI args or settings
 
 # Kurtis E1 system prompt.
 SYSTEM_PROMPT = "You are Kurtis, an empathetic mental health assistant. Keep responses short and conversational, as if you're on a calm conversation. Don't use glyphs or emoticons."
@@ -132,4 +133,4 @@ VAD_AGGRESSIVENESS = int(
     os.getenv("VAD_AGGRESSIVENESS", "3")
 )  # 0 to 3 (most aggressive)
 VAD_FRAME_MS = int(os.getenv("VAD_FRAME_MS", "30"))  # 10, 20, or 30
-SILENCE_FRAMES_THRESHOLD = 30  # ~900ms of silence
+SILENCE_FRAMES_THRESHOLD = 50  # ~1.5s of silence to allow for pauses
