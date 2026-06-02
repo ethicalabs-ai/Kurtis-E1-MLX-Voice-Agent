@@ -84,11 +84,13 @@ class VADCollector:
         self.triggered = False
         self.silence_frames = 0
 
-    def process_audio(self, pcm_16_signed_bytes: bytes, silence_threshold_override: int = None):
+    def process_audio(
+        self, pcm_16_signed_bytes: bytes, silence_threshold_override: int = None
+    ):
         """
         Processes a chunk of 16-bit signed PCM audio bytes and yields
         complete speech utterances as np.ndarray (dtype=np.int16).
-        
+
         Args:
             pcm_16_signed_bytes: Audio data.
             silence_threshold_override: Optional override for silence threshold (in frames).
@@ -97,8 +99,12 @@ class VADCollector:
         This is a generator function.
         """
         self.audio_buffer.extend(pcm_16_signed_bytes)
-        
-        current_silence_threshold = silence_threshold_override if silence_threshold_override is not None else self.silence_frames_threshold
+
+        current_silence_threshold = (
+            silence_threshold_override
+            if silence_threshold_override is not None
+            else self.silence_frames_threshold
+        )
 
         # Process audio in VAD-required frame sizes
         while len(self.audio_buffer) >= self.frame_bytes:

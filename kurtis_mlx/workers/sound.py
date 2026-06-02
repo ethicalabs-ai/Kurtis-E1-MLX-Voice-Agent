@@ -6,7 +6,9 @@ from rich.console import Console
 console = Console()
 
 
-def sd_worker(sound_queue, samplerate, is_busy_event, interrupt_event, pause_event, ui_queue=None):
+def sd_worker(
+    sound_queue, samplerate, is_busy_event, interrupt_event, pause_event, ui_queue=None
+):
     while True:
         try:
             au = sound_queue.get()
@@ -15,11 +17,11 @@ def sd_worker(sound_queue, samplerate, is_busy_event, interrupt_event, pause_eve
         else:
             if au is None:
                 break
-        
+
         # Check for pause before starting
         if pause_event.is_set():
-            # If paused, we might want to discard or wait? 
-            # For now, let's discard to avoid backlog when resuming, 
+            # If paused, we might want to discard or wait?
+            # For now, let's discard to avoid backlog when resuming,
             # or we could wait. Discarding seems safer for a "live" feel.
             # But if it's a long response, maybe we want to hear it?
             # Let's wait a bit and check again, or just skip.
@@ -36,7 +38,7 @@ def sd_worker(sound_queue, samplerate, is_busy_event, interrupt_event, pause_eve
                     pass
 
             au_np = np.asarray(au, dtype=np.float32)
-            
+
             # Play audio
             with sd.OutputStream(
                 samplerate=samplerate, channels=1, dtype="float32"
@@ -49,15 +51,15 @@ def sd_worker(sound_queue, samplerate, is_busy_event, interrupt_event, pause_eve
                     if interrupt_event.is_set():
                         console.print("[yellow]Playback interrupted.")
                         # Do not clear interrupt_event here. It is cleared by handlers.py before new playback.
-                        # interrupt_event.clear() 
+                        # interrupt_event.clear()
                         # Clear the queue to stop pending sentences
                         while not sound_queue.empty():
                             try:
                                 sound_queue.get_nowait()
-                            except:
+                            except Exception:
                                 break
                         break
-                    
+
                     # Check for pause during playback
                     if pause_event.is_set():
                         console.print("[yellow]Playback paused.")
@@ -71,27 +73,29 @@ def sd_worker(sound_queue, samplerate, is_busy_event, interrupt_event, pause_eve
                                 while not sound_queue.empty():
                                     try:
                                         sound_queue.get_nowait()
-                                    except:
+                                    except Exception:
                                         break
-                                break # Break inner wait, then will break outer loop
+                                break  # Break inner wait, then will break outer loop
                             time.sleep(0.1)
-                        
-                        if interrupt_event.is_set(): # Double check if we broke due to interrupt
-                             break
+
+                        if (
+                            interrupt_event.is_set()
+                        ):  # Double check if we broke due to interrupt
+                            break
                         stream.start()
 
                     chunk = au_np[i : i + chunk_size]
-                    
+
                     # Calculate RMS for this chunk
                     if ui_queue:
-                        rms = np.sqrt(np.mean(chunk ** 2))
+                        rms = np.sqrt(np.mean(chunk**2))
                         try:
                             ui_queue.put_nowait({"type": "rms", "value": float(rms)})
                         except Exception:
                             pass
-                    
+
                     stream.write(chunk)
-                
+
                 # stream.stop() is called automatically by context manager exit or we can let it drain
                 # But we might want to ensure it's finished
                 # stream.stop()

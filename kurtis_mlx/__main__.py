@@ -48,7 +48,7 @@ console = Console()
     default="tts_models/multilingual/multi-dataset/xtts_v2",
     help="TTS model subpath",
 )
-@click.option("--max-tokens", default=200, help="Maximum tokens in LLM response.")
+@click.option("--max-tokens", default=1024, help="Maximum tokens in LLM response.")
 @click.option(
     "--samplerate", default=22050, help="Audio recording and playback sample rate."
 )
@@ -106,10 +106,10 @@ def main(
 
     # Queue for sending audio RMS to UI
     ui_queue = MPQueue() if ui else None
-    
+
     # Queue for sending control messages from UI to workers
     control_queue = MPQueue() if ui else None
-    
+
     # Event to signal when audio is playing (to pause recording)
     is_busy_event = Event()
     interrupt_event = Event()
@@ -118,7 +118,7 @@ def main(
     # CLI Pause Listener
     if not ui:
         from pynput import keyboard
-        
+
         def on_press(key):
             if key == keyboard.Key.space:
                 if pause_event.is_set():
@@ -144,7 +144,7 @@ def main(
         # But if we want settings to persist, we should check if it's already set?
         # For now, let's say CLI overrides initial, but UI can change it at runtime.
         if config.LLM_MODEL is None:
-             config.LLM_MODEL = llm_model
+            config.LLM_MODEL = llm_model
 
         history = [
             {
@@ -164,8 +164,6 @@ def main(
         text_queue = MPQueue()
         sound_queue = MPQueue()
         transcription_queue = MPQueue()
-        
-
 
         tts_process = Process(
             target=tts_worker,
@@ -221,13 +219,27 @@ def main(
         else:
             sound_process = Process(
                 target=sd_worker,
-                args=(sound_queue, samplerate, is_busy_event, interrupt_event, pause_event, ui_queue),
+                args=(
+                    sound_queue,
+                    samplerate,
+                    is_busy_event,
+                    interrupt_event,
+                    pause_event,
+                    ui_queue,
+                ),
                 daemon=True,
             )
             sound_process.start()
             mic_process = Process(
                 target=mic_worker,
-                args=(transcription_queue, is_busy_event, pause_event, ui_queue, control_queue, debug),
+                args=(
+                    transcription_queue,
+                    is_busy_event,
+                    pause_event,
+                    ui_queue,
+                    control_queue,
+                    debug,
+                ),
                 daemon=True,
             )
             mic_process.start()
@@ -235,7 +247,9 @@ def main(
         try:
             while True:
                 # Re-instantiate client to pick up any config changes (e.g. API URL from UI)
-                client = OpenAI(base_url=config.OPENAI_API_URL, api_key=config.OPENAI_API_KEY)
+                client = OpenAI(
+                    base_url=config.OPENAI_API_URL, api_key=config.OPENAI_API_KEY
+                )
 
                 if sip:
                     # In SIP mode, we wait for audio from the sip_worker
@@ -307,7 +321,12 @@ def main(
         return
 
     if ui:
-        run_ui(agent_run_function=start_agent_logic, audio_queue=ui_queue, control_queue=control_queue, debug=debug)
+        run_ui(
+            agent_run_function=start_agent_logic,
+            audio_queue=ui_queue,
+            control_queue=control_queue,
+            debug=debug,
+        )
     else:
         start_agent_logic()
 

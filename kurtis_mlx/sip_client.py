@@ -2,7 +2,6 @@ import time
 import socket
 import threading
 import numpy as np
-import collections
 import audioop
 from rich.console import Console
 from pyVoIP.VoIP import VoIPPhone, InvalidStateError, CallState
@@ -145,7 +144,7 @@ class SipClient:
         while self.active_call == call:
             try:
                 # Removed exclusion window logic to allow interruption
-                
+
                 # Normal audio processing
                 pcm_8_unsigned_bytes = call.read_audio()
                 if not pcm_8_unsigned_bytes:
@@ -189,26 +188,26 @@ class SipClient:
                     # If interrupted, we should probably clear the queue or just skip current playback
                     # But here we are waiting for get().
                     # If we are already playing, we need to stop.
-                    # Since we process chunk by chunk (actually whole clips here), 
+                    # Since we process chunk by chunk (actually whole clips here),
                     # we can check before processing.
                     # To support immediate interruption of a long clip, we'd need to chunk it.
                     # For now, let's just check before processing.
                     # Ideally, we should chunk the playback like in sd_worker.
-                    
+
                     # Clear the queue
                     while not self.queues["playback"].empty():
                         try:
                             self.queues["playback"].get_nowait()
-                        except:
+                        except Exception:
                             break
                     pass
 
                 # 1. Get the float audio list from TTS worker
                 try:
                     audio_list = self.queues["playback"].get(timeout=0.1)
-                except: # Empty
+                except Exception:  # Empty
                     continue
-                
+
                 if audio_list is None:
                     continue
 
@@ -233,17 +232,19 @@ class SipClient:
                 console.print(
                     f"[SIP] Streaming {len(pcm_8_unsigned_bytes)} bytes of audio..."
                 )
-                
+
                 # Chunking for interruption support
-                CHUNK_SIZE = 160 * 5 # 100ms chunks (8000Hz * 0.1s * 1 byte) = 800 bytes
-                # Actually 160 samples is 20ms. 
-                
+                CHUNK_SIZE = (
+                    160 * 5
+                )  # 100ms chunks (8000Hz * 0.1s * 1 byte) = 800 bytes
+                # Actually 160 samples is 20ms.
+
                 for i in range(0, len(pcm_8_unsigned_bytes), CHUNK_SIZE):
                     if self.interrupt_event.is_set():
                         console.print("[SIP] Playback interrupted.")
                         self.interrupt_event.clear()
                         break
-                    
+
                     chunk = pcm_8_unsigned_bytes[i : i + CHUNK_SIZE]
                     call.write_audio(chunk)
                     # Small sleep to match timing? write_audio might be blocking or fast.

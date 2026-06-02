@@ -1,7 +1,7 @@
 [project]
 name = "kurtis_mlx"
 version = "0.1.0"
-description = "Kurtis E1 MLX - Voice Assistant"
+description = "Kurtis EON1 - Voice Agent"
 readme = "README.md"
 requires-python = ">=3.11.11"
 dependencies = [
@@ -20,9 +20,28 @@ dependencies = [
     "rich>=14.2.0",
     "scipy>=1.15.2",
     "sounddevice>=0.5.1",
+    "torchcodec>=0.1.0",
+    "transformers>=4.34.0,<5.0.0",
     "webrtcvad-wheels>=2.0.14",
     "whisper-cpp-python>=0.2.0",
-    "wxpython>=4.2.4",
+    "wxpython>=4.2.5",
+]
+
+[project.optional-dependencies]
+# CPU-only build (uv sync --extra cpu)
+cpu = [
+    "torch>=2.10.0",
+    "torchvision>=0.25.0",
+    "torchaudio>=2.10.0",
+]
+# ROCm build (uv sync --extra rocm)
+rocm = [
+    "torch>=2.10.0",
+    "torchvision>=0.25.0",
+    "torchaudio>=2.10.0",
+    "bitsandbytes>=0.46.1",
+    "pytorch-triton-rocm",
+    "triton-rocm",
 ]
 
 [build-system]
@@ -40,5 +59,39 @@ dev = [
     "ruff>=0.7.3",
 ]
 
+[[tool.uv.index]]
+name = "pytorch-rocm"
+url = "https://download.pytorch.org/whl/rocm7.2/"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
 [tool.uv.sources]
 pyvoip = { git = "https://github.com/tayler6000/pyVoIP.git" }
+torch = [
+    { index = "pytorch-rocm", extra = "rocm" },
+    { index = "pytorch-cpu",  extra = "cpu"  },
+]
+torchvision = [
+    { index = "pytorch-rocm", extra = "rocm" },
+    { index = "pytorch-cpu",  extra = "cpu"  },
+]
+torchaudio = [
+    { index = "pytorch-rocm", extra = "rocm" },
+    { index = "pytorch-cpu",  extra = "cpu"  },
+]
+pytorch-triton-rocm = { index = "pytorch-rocm" }
+triton-rocm         = { index = "pytorch-rocm" }
+triton              = { index = "pytorch-rocm" }
+
+[tool.uv]
+prerelease = "allow"
+conflicts = [
+    [
+        { extra = "cpu" },
+        { extra = "rocm" },
+    ],
+]

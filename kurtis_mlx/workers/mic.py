@@ -16,7 +16,14 @@ VAD_BLOCK_SAMPLES = int(TARGET_SAMPLE_RATE * (VAD_FRAME_MS / 1000.0))
 # 16000 * 0.030 = 480 samples per frame
 
 
-def mic_worker(transcription_queue, is_busy_event, pause_event, ui_queue=None, control_queue=None, debug=False):
+def mic_worker(
+    transcription_queue,
+    is_busy_event,
+    pause_event,
+    ui_queue=None,
+    control_queue=None,
+    debug=False,
+):
     """
     Listens to the microphone, applies VAD, and puts
     speech utterances into the transcription_queue.
@@ -25,22 +32,22 @@ def mic_worker(transcription_queue, is_busy_event, pause_event, ui_queue=None, c
         # Try to get available devices
         devices = sd.query_devices()
         console.print(f"[mic_worker] Available audio devices: {len(devices)}")
-        
+
         # Find default input device
         # Find default input device
         default_input = sd.default.device[0]
         if default_input is None:
             # Find first input device
             for i, device in enumerate(devices):
-                if device['max_input_channels'] > 0:
+                if device["max_input_channels"] > 0:
                     default_input = i
                     break
-        
+
         if default_input is not None:
-             console.print(f"[mic_worker] Initial device index: {default_input}")
+            console.print(f"[mic_worker] Initial device index: {default_input}")
         else:
-             console.print("[mic_worker] No input device found.")
-             return
+            console.print("[mic_worker] No input device found.")
+            return
 
         vad_collector = VADCollector(
             sample_rate=TARGET_SAMPLE_RATE,
@@ -53,7 +60,7 @@ def mic_worker(transcription_queue, is_busy_event, pause_event, ui_queue=None, c
         )
 
         console.print(f"[mic_worker] Listening for speech at {TARGET_SAMPLE_RATE}Hz...")
-        
+
         # Main loop to allow restarting stream with new device
         while True:
             stream = None
@@ -69,7 +76,7 @@ def mic_worker(transcription_queue, is_busy_event, pause_event, ui_queue=None, c
                         device=default_input,
                         samplerate=TARGET_SAMPLE_RATE,
                         channels=1,
-                        dtype="float32", # Use float32 for easier resampling if needed
+                        dtype="float32",  # Use float32 for easier resampling if needed
                         blocksize=VAD_BLOCK_SAMPLES,
                         latency="low",
                     )
@@ -80,14 +87,14 @@ def mic_worker(transcription_queue, is_busy_event, pause_event, ui_queue=None, c
                     # console.print(f"[mic_worker] Failed to open with preferred settings: {e1}")
                     try:
                         # Attempt 2: Device default sample rate
-                        device_info = sd.query_devices(default_input, 'input')
-                        default_sr = int(device_info['default_samplerate'])
+                        device_info = sd.query_devices(default_input, "input")
+                        default_sr = int(device_info["default_samplerate"])
                         # console.print(f"[mic_worker] Trying device default sample rate: {default_sr}")
-                        
+
                         # Calculate new blocksize for 30ms at this rate
                         # 30ms = 0.03s
                         current_blocksize = int(default_sr * VAD_FRAME_MS / 1000)
-                        
+
                         stream = sd.InputStream(
                             device=default_input,
                             samplerate=default_sr,
@@ -108,10 +115,14 @@ def mic_worker(transcription_queue, is_busy_event, pause_event, ui_queue=None, c
                         stream.start()
                         current_samplerate = int(stream.samplerate)
                         current_blocksize = stream.blocksize
-                        console.print(f"[mic_worker] Fallback: Rate={current_samplerate}, Block={current_blocksize}")
+                        console.print(
+                            f"[mic_worker] Fallback: Rate={current_samplerate}, Block={current_blocksize}"
+                        )
 
-                console.print(f"[mic_worker] Stream started on device {default_input} at {current_samplerate}Hz")
-                
+                console.print(
+                    f"[mic_worker] Stream started on device {default_input} at {current_samplerate}Hz"
+                )
+
                 while True:
                     # Check for control messages
                     if control_queue and not control_queue.empty():
@@ -119,13 +130,17 @@ def mic_worker(transcription_queue, is_busy_event, pause_event, ui_queue=None, c
                             msg = control_queue.get_nowait()
                             if msg.get("action") == "set_device":
                                 new_device = msg.get("device_index")
-                                console.print(f"[mic_worker] Switching to device: {new_device}")
+                                console.print(
+                                    f"[mic_worker] Switching to device: {new_device}"
+                                )
                                 default_input = new_device
-                                selected_channel = 0 # Reset channel on device change
+                                selected_channel = 0  # Reset channel on device change
                                 break  # Break inner loop to restart stream
                             elif msg.get("action") == "set_channel":
                                 selected_channel = msg.get("channel_index", 0)
-                                console.print(f"[mic_worker] Switching to channel: {selected_channel}")
+                                console.print(
+                                    f"[mic_worker] Switching to channel: {selected_channel}"
+                                )
                             elif msg.get("action") == "toggle_pause":
                                 if pause_event.is_set():
                                     pause_event.clear()
@@ -153,9 +168,9 @@ def mic_worker(transcription_queue, is_busy_event, pause_event, ui_queue=None, c
                     if block.ndim > 1 and block.shape[1] > selected_channel:
                         block = block[:, selected_channel]
                     elif block.ndim > 1:
-                         block = block[:, 0] # Fallback to first channel
+                        block = block[:, 0]  # Fallback to first channel
                     elif block.ndim > 1:
-                         block = block.flatten()
+                        block = block.flatten()
 
                     # Resample if necessary
                     if current_samplerate != TARGET_SAMPLE_RATE:
@@ -164,7 +179,7 @@ def mic_worker(transcription_queue, is_busy_event, pause_event, ui_queue=None, c
                         # scipy.signal.resample is faster than librosa for fixed size
                         num_samples = VAD_BLOCK_SAMPLES
                         block = scipy.signal.resample(block, num_samples)
-                    
+
                     # Ensure we have exactly VAD_BLOCK_SAMPLES (480)
                     if len(block) != VAD_BLOCK_SAMPLES:
                         # Pad or trim
@@ -175,15 +190,17 @@ def mic_worker(transcription_queue, is_busy_event, pause_event, ui_queue=None, c
 
                     # Calculate RMS for debug or UI
                     # block is float32
-                    rms = np.sqrt(np.mean(block ** 2))
-                    normalized_rms = rms 
+                    rms = np.sqrt(np.mean(block**2))
+                    normalized_rms = rms
 
-                    if debug and np.random.rand() < 0.05: # Log 5% of packets
+                    if debug and np.random.rand() < 0.05:  # Log 5% of packets
                         console.print(f"[mic_worker] RMS: {normalized_rms:.4f}")
 
                     if ui_queue is not None:
                         try:
-                            ui_queue.put_nowait({"type": "rms", "value": normalized_rms})
+                            ui_queue.put_nowait(
+                                {"type": "rms", "value": normalized_rms}
+                            )
                         except Exception:
                             pass  # Queue might be full, ignore
 
@@ -197,10 +214,12 @@ def mic_worker(transcription_queue, is_busy_event, pause_event, ui_queue=None, c
                     # Interruption: 10 frames (~300ms)
                     silence_threshold = None
                     if is_busy_event.is_set():
-                         silence_threshold = 10 # 300ms
-                    
+                        silence_threshold = 10  # 300ms
+
                     # Process audio with VAD
-                    for speech_chunk in vad_collector.process_audio(audio_bytes, silence_threshold_override=silence_threshold):
+                    for speech_chunk in vad_collector.process_audio(
+                        audio_bytes, silence_threshold_override=silence_threshold
+                    ):
                         if speech_chunk is not None:
                             # We have a complete utterance
                             if debug:
@@ -209,10 +228,10 @@ def mic_worker(transcription_queue, is_busy_event, pause_event, ui_queue=None, c
                                 )
                             # The queue expects the np.ndarray
                             transcription_queue.put(speech_chunk)
-            
+
             except Exception as e:
                 console.print(f"[bold red][mic_worker Stream Error] {e}[/bold red]")
-                time.sleep(2) # Wait a bit before retrying
+                time.sleep(2)  # Wait a bit before retrying
             finally:
                 if stream:
                     stream.stop()

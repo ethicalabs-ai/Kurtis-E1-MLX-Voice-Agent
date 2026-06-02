@@ -57,7 +57,6 @@ def test_main_sip_mode_missing_args(mock_handle_sip_interaction):
     result = runner.invoke(main, ["--sip", "--sip-server", "test.com"])
     assert result.exit_code == 0
     assert (
-        "you must provide --sip-server, --sip-user, and --sip-password"
-        in result.output
+        "you must provide --sip-server, --sip-user, and --sip-password" in result.output
     )
     mock_handle_sip_interaction.assert_not_called()

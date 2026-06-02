@@ -1,6 +1,9 @@
+import os
 import nltk
 import numpy as np
 import librosa
+
+os.environ["COQUI_TOS_AGREED"] = "1"
 from TTS.api import TTS
 from rich.console import Console
 
@@ -16,7 +19,9 @@ def clean_text(text):
     return clean_text
 
 
-def tts_worker(text_queue, sound_queue, tts_model, samplerate, lang_code, speaker, interrupt_event):
+def tts_worker(
+    text_queue, sound_queue, tts_model, samplerate, lang_code, speaker, interrupt_event
+):
     TARGET_SAMPLE_RATE = samplerate
 
     try:
@@ -39,9 +44,9 @@ def tts_worker(text_queue, sound_queue, tts_model, samplerate, lang_code, speake
                 while not text_queue.empty():
                     try:
                         text_queue.get_nowait()
-                    except:
+                    except Exception:
                         break
-                # We don't clear the event here, sound_worker or handlers might do it, 
+                # We don't clear the event here, sound_worker or handlers might do it,
                 # or we can clear it if we are the ones handling it.
                 # But usually sound_worker clears it after stopping playback.
                 # If we clear it here, sound_worker might not see it?
@@ -63,16 +68,16 @@ def tts_worker(text_queue, sound_queue, tts_model, samplerate, lang_code, speake
                 pass
 
             text = text_queue.get(timeout=0.1)
-        except:
+        except Exception:
             continue
-            
+
         if text is None:
             break
 
         # Check interruption again after getting text
         if interrupt_event.is_set():
-             console.print("[yellow]TTS generation skipped due to interruption.")
-             continue
+            console.print("[yellow]TTS generation skipped due to interruption.")
+            continue
 
         sentences = clean_text(text.strip())
 
@@ -84,7 +89,7 @@ def tts_worker(text_queue, sound_queue, tts_model, samplerate, lang_code, speake
 
             try:
                 waveform_list = tts.tts(sentence, language=lang_code, speaker=speaker)
-                
+
                 # Check interruption after generation (before sending)
                 if interrupt_event.is_set():
                     console.print("[yellow]TTS generation interrupted (discarding).")
@@ -92,7 +97,9 @@ def tts_worker(text_queue, sound_queue, tts_model, samplerate, lang_code, speake
 
                 waveform_np = np.asarray(waveform_list, dtype=np.float32)
                 if SOURCE_SAMPLE_RATE != TARGET_SAMPLE_RATE:
-                    console.print(f"[Audio] Resampling audio to {TARGET_SAMPLE_RATE}Hz...")
+                    console.print(
+                        f"[Audio] Resampling audio to {TARGET_SAMPLE_RATE}Hz..."
+                    )
                     waveform_resampled = librosa.resample(
                         waveform_np,
                         orig_sr=SOURCE_SAMPLE_RATE,
@@ -104,6 +111,8 @@ def tts_worker(text_queue, sound_queue, tts_model, samplerate, lang_code, speake
                     waveform_resampled = waveform_np
                 sound_queue.put(waveform_resampled.tolist())
             except Exception as e:
-                console.print(f"[bold red][TTS Error] Failed to process sentence: {e}[/bold red]")
+                console.print(
+                    f"[bold red][TTS Error] Failed to process sentence: {e}[/bold red]"
+                )
                 # Put an empty list to avoid blocking
                 sound_queue.put([])

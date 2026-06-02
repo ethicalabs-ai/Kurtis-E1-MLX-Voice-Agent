@@ -1,9 +1,10 @@
+# ruff: noqa: E402
 import os
 import sys
 from unittest import mock
 
 # Add project root to path to allow kurtis_ui import
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
 # Since wx, pyaudio and numpy may not be installed in the test environment,
@@ -44,9 +45,9 @@ mock_wx.Frame = MockFrame
 
 # This technique places mock objects into sys.modules, so when kurtis_ui
 # is imported, it receives our mocks instead of trying to load the real libraries.
-sys.modules['wx'] = mock_wx
-sys.modules['pyaudio'] = mock.MagicMock()
-sys.modules['numpy'] = mock.MagicMock()
+sys.modules["wx"] = mock_wx
+sys.modules["pyaudio"] = mock.MagicMock()
+sys.modules["numpy"] = mock.MagicMock()
 
 # Now we can safely import from kurtis_mlx.ui
 from kurtis_mlx.ui import (
@@ -112,7 +113,6 @@ def test_pulsating_circle_panel_on_paint():
     Tests that the on_paint method performs the expected drawing operations
     by checking calls to the mocked wx.GraphicsContext.
     """
-    import wx  # The mock wx
 
     parent_mock = mock.MagicMock()
     panel = PulsatingCirclePanel(parent_mock)
@@ -123,8 +123,9 @@ def test_pulsating_circle_panel_on_paint():
 
     event_mock = mock.MagicMock()
 
-    with mock.patch('wx.AutoBufferedPaintDC') as mock_dc_class, \
-         mock.patch('wx.GraphicsContext.Create') as mock_gc_create:
+    with mock.patch("wx.AutoBufferedPaintDC") as mock_dc_class, mock.patch(
+        "wx.GraphicsContext.Create"
+    ) as mock_gc_create:
 
         # Configure the mocks returned by the patched objects
         mock_dc = mock.MagicMock()
