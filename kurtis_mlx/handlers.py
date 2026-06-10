@@ -61,8 +61,17 @@ def handle_response_and_playback(
     text_queue.put(response)
 
 
+def _stt_client():
+    """Create an OpenAI client for STT using the STT-specific base URL."""
+    return openai.OpenAI(
+        base_url=config.OPENAI_STT_API_URL, api_key=config.OPENAI_API_KEY
+    )
+
+
 def get_validated_transcription(
-    audio_np, stt_model_name, sample_rate, whisper_backend="mlx", ggml_model_path=None
+    audio_np, stt_model_name, sample_rate, whisper_backend="mlx",
+    ggml_model_path=None, openai_client=None, openai_model="whisper-1",
+    language=None,
 ):
     """
     Transcribes audio and validates the quality using Whisper's metadata.
@@ -71,12 +80,21 @@ def get_validated_transcription(
     console.print("[green]Transcribing...")
     # Get the full transcription result
     use_whisper_cpp = whisper_backend == "whisper_cpp"
+    use_openai = whisper_backend == "openai"
+
+    # Use dedicated STT client (separate base URL for /api/v1/... endpoints)
+    stt_openai_client = openai_client or _stt_client()
+
     transcription_result = transcribe(
         audio_np,
         stt_model_name,
         sample_rate=sample_rate,
         use_whisper_cpp=use_whisper_cpp,
+        use_openai=use_openai,
+        openai_model=openai_model,
+        openai_client=stt_openai_client,
         ggml_model_path=ggml_model_path,
+        language=language,
     )
 
     if use_whisper_cpp:
@@ -205,6 +223,7 @@ def handle_interaction(
     interrupt_event,
     whisper_backend="mlx",
     ggml_model_path=None,
+    whisper_model_openai=None,
 ):
     TARGET_LANGUAGES = [
         lang for lang in config.SUPPORTED_LANGUAGES if lang != "english"
@@ -221,6 +240,7 @@ def handle_interaction(
         # But we need to validate if it's true speech before interrupting.
 
     console.print("[green]Transcribing...")
+    openai_model = whisper_model_openai or stt_model_name
     text = (
         get_validated_transcription(
             audio_np,
@@ -228,6 +248,9 @@ def handle_interaction(
             sample_rate=16000,
             whisper_backend=whisper_backend,
             ggml_model_path=ggml_model_path,
+            openai_client=client,
+            openai_model=openai_model,
+            language=config.SUPPORTED_LANGUAGES.get(language, {}).get("code") if language else None,
         )
         or ""
     )
@@ -333,6 +356,7 @@ def handle_sip_interaction(
     interrupt_event,
     whisper_backend="mlx",
     ggml_model_path=None,
+    whisper_model_openai=None,
 ):
     """
     A variation of handle_interaction that gets audio from a queue
@@ -346,6 +370,7 @@ def handle_sip_interaction(
     console.print("[green]Transcribing incoming call audio...")
     # SIP audio is 8kHz
     # SIP audio is 8kHz
+    openai_model = whisper_model_openai or stt_model_name
     text = (
         get_validated_transcription(
             audio_np,
@@ -353,6 +378,9 @@ def handle_sip_interaction(
             sample_rate=8000,
             whisper_backend=whisper_backend,
             ggml_model_path=ggml_model_path,
+            openai_client=client,
+            openai_model=openai_model,
+            language=config.SUPPORTED_LANGUAGES.get(language, {}).get("code") if language else None,
         )
         or ""
     )

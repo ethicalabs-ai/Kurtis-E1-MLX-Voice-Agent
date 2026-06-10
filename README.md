@@ -3,7 +3,7 @@
 A privacy-focused, **offline voice assistant for macOS & Linux**, powered by:
 
 - 🧠 **Local LLM Inference**: Powered by local engines via `mlx-lm` or any OpenAI-compatible API endpoint (Ollama, LM Studio, vLLM).
-- 🎤 **Dual-Backend Speech-to-Text**: Real-time transcription via `mlx-whisper` or high-performance `whisper-cpp-python` (GGML format).
+- 🎤 **Triple-Backend Speech-to-Text**: Real-time transcription via `mlx-whisper`, `whisper-cpp-python` (GGML format), or the **OpenAI-compatible API** (GPU-accelerated on your proxy server).
 - 🌍 **Offline Translations**: On-device multilingual translations powered by [ethicalabs/Tower-Plus-2B-mlx](https://huggingface.co/ethicalabs/Tower-Plus-2B-mlx).
 - 🗣️ **Emotive Multilingual TTS**: High-quality voice synthesis powered by XTTS v2.
 - 🖥️ **Interactive Visualizer**: Responsive wxPython GUI featuring a real-time hue-shifting gradient visualizer.
@@ -61,6 +61,10 @@ uv run --extra rocm python3 -m kurtis_mlx --ui --whisper-backend whisper_cpp --g
 
 # For macOS / Apple Silicon (uses MLX-Whisper and mlx-lm server)
 uv run python3 -m kurtis_mlx --ui
+
+# GPU-accelerated via OpenAI-compatible proxy (e.g. Lemonade, vLLM)
+# Transcription runs on the proxy's GPU; LLM runs on the same endpoint.
+uv run --extra rocm python3 -m kurtis_mlx --ui --whisper-backend openai --llm-model Qwen3.5-4B-GGUF --max-tokens 4096
 ```
 
 ### 2. Headless CLI Mode
@@ -78,8 +82,9 @@ You can fully customize the agent's behavior with the following options:
 - `--speaker`: Change the default TTS speaker.
 - `--translate`: Translate your native language spoken into English for English-only LLMs.
 - `--llm-model`: Specify the LLM model identifier.
-- `--whisper-backend`: Select between `mlx` (macOS native) or `whisper_cpp` (Linux/Cross-platform).
+- `--whisper-backend`: Select between `mlx` (macOS native), `whisper_cpp` (Linux/Cross-platform, local GGML model), or `openai` (GPU-accelerated via your OpenAI-compatible proxy).
 - `--ggml-model-path`: Specify the path to a GGML-format Whisper model (required for `whisper_cpp` backend, e.g., `models/ggml-tiny.bin`).
+- `--whisper-model-openai`: Whisper model name for the `openai` backend. Defaults to `Whisper-Large-v3-Turbo1`.
 
 ---
 

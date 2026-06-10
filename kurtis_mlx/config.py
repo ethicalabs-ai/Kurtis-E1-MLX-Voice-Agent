@@ -3,6 +3,10 @@ import os
 # OpenAI-compatible endpoint (Ollama, LM Studio, vLLM, etc.)
 OPENAI_API_URL = os.environ.get("OPENAI_API_URL", "http://localhost:8080/v1")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "dummy")
+# Separate STT endpoint — some proxies use /api/v1/... for audio
+OPENAI_STT_API_URL = os.environ.get(
+    "OPENAI_STT_API_URL", os.environ.get("OPENAI_API_URL", "http://localhost:8080/v1")
+)
 LLM_MODEL = None  # Will be set by CLI args or settings
 
 # Kurtis EON1 system prompt.

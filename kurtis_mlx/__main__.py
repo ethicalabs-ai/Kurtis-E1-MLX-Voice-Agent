@@ -31,11 +31,16 @@ console = Console()
 @click.option(
     "--whisper-model",
     default="mlx-community/whisper-medium",
-    help="Base Whisper model (combined with language code).",
+    help="Base Whisper model (combined with language code) or OpenAI model name.",
+)
+@click.option(
+    "--whisper-model-openai",
+    default="Whisper-Large-v3-Turbo1",
+    help="OpenAI-compatible Whisper model name (used with --whisper-backend openai).",
 )
 @click.option(
     "--whisper-backend",
-    type=click.Choice(["mlx", "whisper_cpp"]),
+    type=click.Choice(["mlx", "whisper_cpp", "openai"]),
     default="mlx",
     help="Backend for Whisper transcription.",
 )
@@ -84,6 +89,7 @@ def main(
     language,
     speaker,
     whisper_model,
+    whisper_model_openai,
     tts_model,
     max_tokens,
     samplerate,
@@ -268,6 +274,7 @@ def main(
                         interrupt_event,
                         whisper_backend=whisper_backend,
                         ggml_model_path=ggml_model_path,
+                        whisper_model_openai=whisper_model_openai,
                     )
                 else:
                     # In standard mode, we wait for local microphone input
@@ -287,6 +294,7 @@ def main(
                         interrupt_event,
                         whisper_backend=whisper_backend,
                         ggml_model_path=ggml_model_path,
+                        whisper_model_openai=whisper_model_openai,
                     )
 
         except KeyboardInterrupt:
