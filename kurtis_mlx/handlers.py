@@ -137,6 +137,11 @@ def get_validated_transcription(
             # Skip validation if no segments, but we did text validation above
             return text
 
+    if use_openai:
+        # OpenAI API returns {"text": ..., "segments": []} — no confidence metadata
+        # Skip segment-based quality validation, rely on text validation above
+        return text
+
     # Check the quality
     avg_confidence = -1.0
     no_speech_prob = 1.0
