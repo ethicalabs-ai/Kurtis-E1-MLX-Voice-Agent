@@ -35,7 +35,7 @@ console = Console()
 )
 @click.option(
     "--whisper-model-openai",
-    default="Whisper-Large-v3-Turbo1",
+    default="Whisper-Large-v3-Turbo",
     help="OpenAI-compatible Whisper model name (used with --whisper-backend openai).",
 )
 @click.option(

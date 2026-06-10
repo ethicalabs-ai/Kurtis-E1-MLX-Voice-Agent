@@ -84,7 +84,7 @@ You can fully customize the agent's behavior with the following options:
 - `--llm-model`: Specify the LLM model identifier.
 - `--whisper-backend`: Select between `mlx` (macOS native), `whisper_cpp` (Linux/Cross-platform, local GGML model), or `openai` (GPU-accelerated via your OpenAI-compatible proxy).
 - `--ggml-model-path`: Specify the path to a GGML-format Whisper model (required for `whisper_cpp` backend, e.g., `models/ggml-tiny.bin`).
-- `--whisper-model-openai`: Whisper model name for the `openai` backend. Defaults to `Whisper-Large-v3-Turbo1`.
+- `--whisper-model-openai`: Whisper model name for the `openai` backend. Defaults to `Whisper-Large-v3-Turbo`.
 
 ---
 
